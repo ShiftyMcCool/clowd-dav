@@ -1,172 +1,39 @@
-.App {
-  text-align: center;
+/* Main App Container */
+.app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-.App-header {
-  background-color: #282c34;
-  padding: 20px;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.App-header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  font-size: 0.9rem;
-}
-
-.logout-btn {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.logout-btn:hover {
-  background-color: #c82333;
-}
-
-.main-nav {
-  display: flex;
-  gap: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.nav-tab {
-  background: transparent;
-  color: rgba(255, 255, 255, 0.8);
-  border: none;
-  padding: 0.75rem 1.5rem;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.nav-tab:last-child {
-  border-right: none;
-}
-
-.nav-tab:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.nav-tab.active {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.App-main {
-  flex: 1;
   background-color: #f8f9fa;
-  overflow: hidden;
+}
+
+/* Main Content Area */
+.app-main {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.loading {
+/* Loading State */
+.app-loading {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  font-size: 1.2rem;
-  color: #666;
-}
-
-.placeholder-content {
-  max-width: 600px;
-  margin: 0 auto;
-  background: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  text-align: left;
-}
-
-.placeholder-content h2 {
-  color: #333;
-  margin-top: 0;
-}
-
-.placeholder-content ul {
   background-color: #f8f9fa;
-  padding: 15px;
-  border-radius: 4px;
-  border-left: 4px solid #007bff;
 }
 
-.placeholder-content li {
-  margin-bottom: 5px;
-  font-family: monospace;
-  font-size: 0.9rem;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .App-header {
-    flex-direction: column;
-    gap: 15px;
-    text-align: center;
-  }
-  
-  .user-info {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .placeholder-content {
-    margin: 0 10px;
-    padding: 20px;
-  }
-}.co
-ntacts-placeholder {
+/* View Container */
+.view-container {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #666;
-  text-align: center;
+  overflow: hidden;
+  position: relative;
 }
 
-.contacts-placeholder h2 {
-  margin-bottom: 1rem;
-  color: #333;
-}
-
-/* Responsive navigation */
-@media (max-width: 768px) {
-  .main-nav {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .nav-tab {
-    flex: 1;
-    text-align: center;
-  }
-}.contac
-ts-view {
+/* Contacts View */
+.contacts-view {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -181,6 +48,7 @@ ts-view {
   height: 100%;
   color: #666;
   text-align: center;
+  padding: 2rem;
 }
 
 .no-address-books h2 {
@@ -242,18 +110,13 @@ ts-view {
   overflow: auto;
 }
 
-/* Fix for the contacts placeholder */
-.contacts-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #666;
-  text-align: center;
-}
-
-.contacts-placeholder h2 {
-  margin-bottom: 1rem;
-  color: #333;
+/* Responsive styles */
+@media (max-width: 768px) {
+  .contacts-layout {
+    flex-direction: column;
+  }
+  
+  .contacts-layout > div {
+    max-height: 50vh;
+  }
 }
