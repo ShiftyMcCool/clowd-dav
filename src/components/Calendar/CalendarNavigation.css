@@ -1,0 +1,145 @@
+.calendar-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-button {
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  min-width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-button:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.nav-button:active {
+  background: #dee2e6;
+}
+
+.today-button {
+  font-weight: 500;
+  color: #007bff;
+}
+
+.today-button:hover {
+  background: #e7f3ff;
+  border-color: #007bff;
+}
+
+.calendar-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: #212529;
+  text-align: center;
+  flex: 1;
+  min-width: 200px;
+}
+
+.view-controls {
+  display: flex;
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.view-button {
+  background: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-right: 1px solid #dee2e6;
+}
+
+.view-button:last-child {
+  border-right: none;
+}
+
+.view-button:hover {
+  background: #f8f9fa;
+}
+
+.view-button.active {
+  background: #007bff;
+  color: #ffffff;
+}
+
+.view-button.active:hover {
+  background: #0056b3;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .calendar-navigation {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .nav-controls {
+    justify-content: center;
+  }
+  
+  .calendar-title {
+    font-size: 1.25rem;
+    text-align: center;
+  }
+  
+  .view-controls {
+    justify-content: center;
+  }
+  
+  .view-button {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-navigation {
+    padding: 0.75rem;
+  }
+  
+  .calendar-title {
+    font-size: 1.1rem;
+  }
+  
+  .nav-button {
+    padding: 0.4rem 0.6rem;
+    font-size: 13px;
+    min-width: 36px;
+    height: 32px;
+  }
+  
+  .view-button {
+    padding: 0.4rem 0.75rem;
+    font-size: 13px;
+  }
+}

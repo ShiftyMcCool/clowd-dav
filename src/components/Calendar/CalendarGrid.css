@@ -1,0 +1,308 @@
+.calendar-grid {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Month View Styles */
+.month-view {
+  height: 100%;
+}
+
+.month-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.month-day-header {
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: #495057;
+  border-right: 1px solid #dee2e6;
+  font-size: 14px;
+}
+
+.month-day-header:last-child {
+  border-right: none;
+}
+
+.month-content {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  flex: 1;
+  border: 1px solid #dee2e6;
+  border-top: none;
+}
+
+.month-day {
+  border-right: 1px solid #dee2e6;
+  border-bottom: 1px solid #dee2e6;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+  position: relative;
+}
+
+.month-day:last-child {
+  border-right: none;
+}
+
+.month-day:hover {
+  background: #f8f9fa;
+}
+
+.month-day.today {
+  background: #e7f3ff;
+}
+
+.month-day.other-month {
+  color: #adb5bd;
+  background: #fafafa;
+}
+
+.month-day.other-month:hover {
+  background: #f0f0f0;
+}
+
+.day-number {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 14px;
+}
+
+.today .day-number {
+  color: #007bff;
+  font-weight: 700;
+}
+
+.day-events {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.event-item {
+  background: #007bff;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-item:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.month-event .event-title {
+  font-weight: 500;
+}
+
+.more-events {
+  font-size: 10px;
+  color: #6c757d;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* Week View Styles */
+.week-view {
+  height: 100%;
+}
+
+.week-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.week-day-header {
+  padding: 1rem 0.5rem;
+  text-align: center;
+  border-right: 1px solid #dee2e6;
+}
+
+.week-day-header:last-child {
+  border-right: none;
+}
+
+.day-name {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  margin-bottom: 0.25rem;
+}
+
+.day-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #212529;
+}
+
+.day-number.today {
+  color: #007bff;
+  background: #e7f3ff;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.week-content {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+  border: 1px solid #dee2e6;
+  border-top: none;
+}
+
+.week-day {
+  border-right: 1px solid #dee2e6;
+  padding: 1rem 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+.week-day:last-child {
+  border-right: none;
+}
+
+.week-day:hover {
+  background: #f8f9fa;
+}
+
+.week-day.today {
+  background: #e7f3ff;
+}
+
+.week-event {
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.week-event .event-time {
+  font-weight: 600;
+  font-size: 10px;
+  opacity: 0.9;
+  margin-bottom: 2px;
+}
+
+.week-event .event-title {
+  font-weight: 500;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .month-day {
+    min-height: 80px;
+    padding: 0.25rem;
+  }
+  
+  .day-number {
+    font-size: 12px;
+  }
+  
+  .event-item {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+  
+  .more-events {
+    font-size: 9px;
+  }
+  
+  .week-day {
+    min-height: 300px;
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .week-event {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+  
+  .week-event .event-time {
+    font-size: 9px;
+  }
+  
+  .day-number {
+    font-size: 1.25rem;
+  }
+  
+  .day-number.today {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .month-day-header,
+  .week-day-header {
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .month-day-header {
+    font-size: 12px;
+  }
+  
+  .day-name {
+    font-size: 12px;
+  }
+  
+  .month-day {
+    min-height: 60px;
+    padding: 0.2rem;
+  }
+  
+  .day-number {
+    font-size: 11px;
+  }
+  
+  .event-item {
+    font-size: 9px;
+    padding: 1px 3px;
+  }
+  
+  .week-day {
+    min-height: 250px;
+    padding: 0.25rem;
+  }
+  
+  .week-event {
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+  
+  .day-number {
+    font-size: 1.1rem;
+  }
+  
+  .day-number.today {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}

@@ -12,6 +12,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .App-header h1 {
@@ -40,10 +42,46 @@
   background-color: #c82333;
 }
 
+.main-nav {
+  display: flex;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.nav-tab {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-tab:last-child {
+  border-right: none;
+}
+
+.nav-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.nav-tab.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
 .App-main {
   flex: 1;
-  padding: 40px 20px;
   background-color: #f8f9fa;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .loading {
@@ -99,5 +137,32 @@
   .placeholder-content {
     margin: 0 10px;
     padding: 20px;
+  }
+}.co
+ntacts-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  text-align: center;
+}
+
+.contacts-placeholder h2 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+/* Responsive navigation */
+@media (max-width: 768px) {
+  .main-nav {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .nav-tab {
+    flex: 1;
+    text-align: center;
   }
 }
