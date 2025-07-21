@@ -993,26 +993,641 @@ END:VCARD</card:address-data>
     });
   });
 
-  describe('placeholder methods', () => {
+  describe('event creation', () => {
+    beforeEach(() => {
+      const authConfig: AuthConfig = {
+        caldavUrl: 'https://example.com/dav.php',
+        carddavUrl: 'https://example.com/dav.php',
+        username: 'testuser',
+        password: 'testpass'
+      };
+      
+      davClient.setAuthConfig(authConfig);
+    });
 
-    it('should throw not implemented error for createEvent', async () => {
-      const calendar = { url: 'test', displayName: 'test' };
-      const event = { uid: 'test', summary: 'test', dtstart: new Date(), dtend: new Date() };
+    it('should create event successfully with 201 status', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        statusText: 'Created',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map([['content-type', 'text/calendar']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        description: 'Test Description',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z'),
+        location: 'Test Location'
+      };
+
+      await davClient.createEvent(calendar, event);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/calendars/testuser/personal/test-event-123.ics',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'Content-Type': 'text/calendar; charset=utf-8'
+          }),
+          body: expect.stringContaining('BEGIN:VCALENDAR')
+        })
+      );
+
+      // Verify the iCalendar content
+      const putCall = mockFetch.mock.calls[0];
+      const icalData = putCall[1].body;
+      expect(icalData).toContain('UID:test-event-123');
+      expect(icalData).toContain('SUMMARY:Test Event');
+      expect(icalData).toContain('DESCRIPTION:Test Description');
+      expect(icalData).toContain('LOCATION:Test Location');
+      expect(icalData).toContain('DTSTART:20250720T100000Z');
+      expect(icalData).toContain('DTEND:20250720T110000Z');
+    });
+
+    it('should create event successfully with 204 status', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map([['content-type', 'text/calendar']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z')
+      };
+
+      await expect(davClient.createEvent(calendar, event)).resolves.not.toThrow();
+    });
+
+    it('should generate proper URL for event with calendar URL ending with slash', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        statusText: 'Created',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map()
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z')
+      };
+
+      await davClient.createEvent(calendar, event);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/calendars/testuser/personal/test-event-123.ics',
+        expect.any(Object)
+      );
+    });
+
+    it('should generate proper URL for event with calendar URL not ending with slash', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        statusText: 'Created',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map()
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z')
+      };
+
+      await davClient.createEvent(calendar, event);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/calendars/testuser/personal/test-event-123.ics',
+        expect.any(Object)
+      );
+    });
+
+    it('should create minimal event without optional fields', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        statusText: 'Created',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map()
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'minimal-event-123',
+        summary: 'Minimal Event',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z')
+      };
+
+      await davClient.createEvent(calendar, event);
+
+      const putCall = mockFetch.mock.calls[0];
+      const icalData = putCall[1].body;
+      expect(icalData).toContain('UID:minimal-event-123');
+      expect(icalData).toContain('SUMMARY:Minimal Event');
+      expect(icalData).not.toContain('DESCRIPTION:');
+      expect(icalData).not.toContain('LOCATION:');
+    });
+
+    it('should throw error when auth config is not set', async () => {
+      davClient.setAuthConfig(null as any);
+      
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date()
+      };
       
       await expect(davClient.createEvent(calendar, event)).rejects.toThrow(
-        'Not implemented yet - will be implemented in task 9'
+        'Authentication not configured. Please set auth config before creating events.'
       );
     });
 
-    it('should throw not implemented error for updateEvent', async () => {
-      const calendar = { url: 'test', displayName: 'test' };
-      const event = { uid: 'test', summary: 'test', dtstart: new Date(), dtend: new Date() };
+    it('should handle event creation failure with non-success status', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map()
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date()
+      };
+      
+      await expect(davClient.createEvent(calendar, event)).rejects.toThrow(
+        'Event creation failed with status 200'
+      );
+    });
+
+    it('should handle network errors during event creation', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+      
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date()
+      };
+      
+      await expect(davClient.createEvent(calendar, event)).rejects.toThrow(
+        'Event creation failed: Network error. Please check your connection and server URL.'
+      );
+    });
+
+    it('should handle HTTP errors during event creation', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden'
+      };
+      mockFetch.mockResolvedValue(mockResponse as any);
+      
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date()
+      };
+      
+      await expect(davClient.createEvent(calendar, event)).rejects.toThrow(
+        'Access forbidden. You may not have permission to access this resource.'
+      );
+    });
+  });
+
+  describe('event updates', () => {
+    beforeEach(() => {
+      const authConfig: AuthConfig = {
+        caldavUrl: 'https://example.com/dav.php',
+        carddavUrl: 'https://example.com/dav.php',
+        username: 'testuser',
+        password: 'testpass'
+      };
+      
+      davClient.setAuthConfig(authConfig);
+    });
+
+    it('should update event successfully with 200 status', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map([['content-type', 'text/calendar']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Updated Test Event',
+        description: 'Updated Description',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z'),
+        location: 'Updated Location',
+        etag: 'original-etag-123'
+      };
+
+      await davClient.updateEvent(calendar, event);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/calendars/testuser/personal/test-event-123.ics',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'Content-Type': 'text/calendar; charset=utf-8',
+            'If-Match': '"original-etag-123"'
+          }),
+          body: expect.stringContaining('BEGIN:VCALENDAR')
+        })
+      );
+
+      // Verify the updated iCalendar content
+      const putCall = mockFetch.mock.calls[0];
+      const icalData = putCall[1].body;
+      expect(icalData).toContain('UID:test-event-123');
+      expect(icalData).toContain('SUMMARY:Updated Test Event');
+      expect(icalData).toContain('DESCRIPTION:Updated Description');
+      expect(icalData).toContain('LOCATION:Updated Location');
+    });
+
+    it('should update event successfully with 204 status', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map([['content-type', 'text/calendar']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Updated Test Event',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z'),
+        etag: 'original-etag-123'
+      };
+
+      await expect(davClient.updateEvent(calendar, event)).resolves.not.toThrow();
+    });
+
+    it('should throw error when ETag is missing', async () => {
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date()
+        // Missing etag
+      };
       
       await expect(davClient.updateEvent(calendar, event)).rejects.toThrow(
-        'Not implemented yet - will be implemented in task 9'
+        'Event ETag is required for updates to detect conflicts.'
       );
     });
 
+    it('should handle conflict error (412 Precondition Failed)', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 412,
+        statusText: 'Precondition Failed',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map()
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date(),
+        etag: 'outdated-etag'
+      };
+      
+      await expect(davClient.updateEvent(calendar, event)).rejects.toThrow(
+        'Event update conflict: The event has been modified by another client. Please refresh and try again.'
+      );
+    });
+
+    it('should throw error when auth config is not set', async () => {
+      davClient.setAuthConfig(null as any);
+      
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date(),
+        etag: 'some-etag'
+      };
+      
+      await expect(davClient.updateEvent(calendar, event)).rejects.toThrow(
+        'Authentication not configured. Please set auth config before updating events.'
+      );
+    });
+
+    it('should handle event update failure with non-success status', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        statusText: 'Created',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map()
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date(),
+        etag: 'some-etag'
+      };
+      
+      await expect(davClient.updateEvent(calendar, event)).rejects.toThrow(
+        'Event update failed with status 201'
+      );
+    });
+
+    it('should handle network errors during event update', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+      
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date(),
+        etag: 'some-etag'
+      };
+      
+      await expect(davClient.updateEvent(calendar, event)).rejects.toThrow(
+        'Event update failed: Network error. Please check your connection and server URL.'
+      );
+    });
+
+    it('should handle HTTP errors during event update', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 404,
+        statusText: 'Not Found'
+      };
+      mockFetch.mockResolvedValue(mockResponse as any);
+      
+      const calendar: Calendar = {
+        url: 'https://example.com/test',
+        displayName: 'Test Calendar'
+      };
+      
+      const event = {
+        uid: 'test-event-123',
+        summary: 'Test Event',
+        dtstart: new Date(),
+        dtend: new Date(),
+        etag: 'some-etag'
+      };
+      
+      await expect(davClient.updateEvent(calendar, event)).rejects.toThrow(
+        'Resource not found. Please check the server URL.'
+      );
+    });
+  });
+
+  describe('iCalendar generation', () => {
+    beforeEach(() => {
+      const authConfig: AuthConfig = {
+        caldavUrl: 'https://example.com/dav.php',
+        carddavUrl: 'https://example.com/dav.php',
+        username: 'testuser',
+        password: 'testpass'
+      };
+      
+      davClient.setAuthConfig(authConfig);
+
+      // Mock successful response for all tests in this describe block
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        statusText: 'Created',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map()
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+    });
+
+    it('should generate valid iCalendar with all properties', async () => {
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'full-event-123',
+        summary: 'Full Event',
+        description: 'Event with all properties',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z'),
+        location: 'Conference Room A'
+      };
+
+      await davClient.createEvent(calendar, event);
+
+      const putCall = mockFetch.mock.calls[0];
+      const icalData = putCall[1].body;
+      
+      // Check VCALENDAR structure
+      expect(icalData).toContain('BEGIN:VCALENDAR');
+      expect(icalData).toContain('END:VCALENDAR');
+      expect(icalData).toContain('VERSION:2.0');
+      expect(icalData).toContain('PRODID:-//CalDAV-CardDAV-Client//EN');
+      expect(icalData).toContain('CALSCALE:GREGORIAN');
+      
+      // Check VEVENT structure
+      expect(icalData).toContain('BEGIN:VEVENT');
+      expect(icalData).toContain('END:VEVENT');
+      
+      // Check event properties
+      expect(icalData).toContain('UID:full-event-123');
+      expect(icalData).toContain('SUMMARY:Full Event');
+      expect(icalData).toContain('DESCRIPTION:Event with all properties');
+      expect(icalData).toContain('LOCATION:Conference Room A');
+      expect(icalData).toContain('DTSTART:20250720T100000Z');
+      expect(icalData).toContain('DTEND:20250720T110000Z');
+      
+      // Check timestamp properties are present
+      expect(icalData).toContain('DTSTAMP:');
+      expect(icalData).toContain('CREATED:');
+      expect(icalData).toContain('LAST-MODIFIED:');
+    });
+
+    it('should generate valid iCalendar with minimal properties', async () => {
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'minimal-event-123',
+        summary: 'Minimal Event',
+        dtstart: new Date('2025-07-20T14:00:00Z'),
+        dtend: new Date('2025-07-20T15:00:00Z')
+      };
+
+      await davClient.createEvent(calendar, event);
+
+      const putCall = mockFetch.mock.calls[0];
+      const icalData = putCall[1].body;
+      
+      // Check required properties are present
+      expect(icalData).toContain('UID:minimal-event-123');
+      expect(icalData).toContain('SUMMARY:Minimal Event');
+      expect(icalData).toContain('DTSTART:20250720T140000Z');
+      expect(icalData).toContain('DTEND:20250720T150000Z');
+      
+      // Check optional properties are not present
+      expect(icalData).not.toContain('DESCRIPTION:');
+      expect(icalData).not.toContain('LOCATION:');
+    });
+
+    it('should handle special characters in event properties', async () => {
+      const calendar: Calendar = {
+        url: 'https://example.com/dav.php/calendars/testuser/personal/',
+        displayName: 'Personal Calendar'
+      };
+
+      const event = {
+        uid: 'special-chars-123',
+        summary: 'Event with "quotes" & symbols',
+        description: 'Description with\nnewlines and special chars: àáâãäå',
+        dtstart: new Date('2025-07-20T10:00:00Z'),
+        dtend: new Date('2025-07-20T11:00:00Z'),
+        location: 'Room #1 (Building A)'
+      };
+
+      await davClient.createEvent(calendar, event);
+
+      const putCall = mockFetch.mock.calls[0];
+      const icalData = putCall[1].body;
+      
+      // Verify the content is properly encoded in the iCalendar
+      expect(icalData).toContain('SUMMARY:Event with "quotes" & symbols');
+      expect(icalData).toContain('LOCATION:Room #1 (Building A)');
+      // Note: ICAL.js handles proper escaping of special characters
+    });
+  });
+
+  describe('placeholder methods', () => {
     it('should throw not implemented error for createContact', async () => {
       const addressBook = { url: 'test', displayName: 'test' };
       const contact = { uid: 'test', fn: 'test' };

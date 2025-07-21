@@ -14,16 +14,14 @@ import {
   DAVRequest, 
   DAVResponse 
 } from '../types/dav';
-const ICAL = require('ical.js');
+import * as ICAL from 'ical.js';
 const vcardParser = require('vcard-parser');
 
 export class DAVClient implements IDAVClient {
   private provider: DAVProvider | null = null;
   private authConfig: AuthConfig | null = null;
 
-  constructor() {
-    // No setup needed for fetch-based implementation
-  }
+
 
   private handleError(response: Response): Error {
     const status = response.status;
@@ -213,13 +211,13 @@ export class DAVClient implements IDAVClient {
         if (error.message.includes('Failed to parse calendar discovery response')) {
           throw error;
         }
-        // If it's a network/HTTP error, re-throw as is
+        // If it's a network/HTTP error, wrap it with context
         if (error.message.includes('Authentication failed') ||
             error.message.includes('Access forbidden') ||
             error.message.includes('Resource not found') ||
             error.message.includes('Server error') ||
             error.message.includes('Network error')) {
-          throw error;
+          throw new Error(`Calendar discovery failed: ${error.message}`);
         }
         throw new Error(`Calendar discovery failed: ${error.message}`);
       }
@@ -266,13 +264,13 @@ export class DAVClient implements IDAVClient {
         if (error.message.includes('Failed to parse address book discovery response')) {
           throw error;
         }
-        // If it's a network/HTTP error, re-throw as is
+        // If it's a network/HTTP error, wrap it with context
         if (error.message.includes('Authentication failed') ||
             error.message.includes('Access forbidden') ||
             error.message.includes('Resource not found') ||
             error.message.includes('Server error') ||
             error.message.includes('Network error')) {
-          throw error;
+          throw new Error(`Address book discovery failed: ${error.message}`);
         }
         throw new Error(`Address book discovery failed: ${error.message}`);
       }
@@ -322,13 +320,13 @@ export class DAVClient implements IDAVClient {
         if (error.message.includes('Failed to parse calendar events response')) {
           throw error;
         }
-        // If it's a network/HTTP error, re-throw as is
+        // If it's a network/HTTP error, wrap it with context
         if (error.message.includes('Authentication failed') ||
             error.message.includes('Access forbidden') ||
             error.message.includes('Resource not found') ||
             error.message.includes('Server error') ||
             error.message.includes('Network error')) {
-          throw error;
+          throw new Error(`Event retrieval failed: ${error.message}`);
         }
         throw new Error(`Event retrieval failed: ${error.message}`);
       }
@@ -366,13 +364,13 @@ export class DAVClient implements IDAVClient {
         if (error.message.includes('Failed to parse contacts response')) {
           throw error;
         }
-        // If it's a network/HTTP error, re-throw as is
+        // If it's a network/HTTP error, wrap it with context
         if (error.message.includes('Authentication failed') ||
             error.message.includes('Access forbidden') ||
             error.message.includes('Resource not found') ||
             error.message.includes('Server error') ||
             error.message.includes('Network error')) {
-          throw error;
+          throw new Error(`Contact retrieval failed: ${error.message}`);
         }
         throw new Error(`Contact retrieval failed: ${error.message}`);
       }
@@ -380,12 +378,98 @@ export class DAVClient implements IDAVClient {
     }
   }
 
+  /**
+   * Create a new calendar event using PUT request with iCalendar data
+   * Implements CalDAV event creation protocol
+   */
   public async createEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
-    throw new Error('Not implemented yet - will be implemented in task 9');
+    if (!this.authConfig) {
+      throw new Error('Authentication not configured. Please set auth config before creating events.');
+    }
+
+    // Generate unique URL for the new event
+    const eventUrl = this.generateEventUrl(calendar, event);
+    
+    // Generate iCalendar data
+    const icalData = this.generateICalendarData(event);
+    
+    try {
+      // PUT request to create the event
+      const response = await this.put(eventUrl, icalData, {
+        'Content-Type': 'text/calendar; charset=utf-8'
+      });
+      
+      // Check if creation was successful (201 Created or 204 No Content)
+      if (response.status !== 201 && response.status !== 204) {
+        throw new Error(`Event creation failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (error.message.includes('Authentication failed') ||
+            error.message.includes('Access forbidden') ||
+            error.message.includes('Resource not found') ||
+            error.message.includes('Server error') ||
+            error.message.includes('Network error')) {
+          throw new Error(`Event creation failed: ${error.message}`);
+        }
+        throw new Error(`Event creation failed: ${error.message}`);
+      }
+      throw new Error('Event creation failed: Unknown error');
+    }
   }
 
+  /**
+   * Update an existing calendar event using PUT request with ETag handling
+   * Implements CalDAV event update protocol with conflict detection
+   */
   public async updateEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
-    throw new Error('Not implemented yet - will be implemented in task 9');
+    if (!this.authConfig) {
+      throw new Error('Authentication not configured. Please set auth config before updating events.');
+    }
+
+    if (!event.etag) {
+      throw new Error('Event ETag is required for updates to detect conflicts.');
+    }
+
+    // Generate event URL (should be the same as the original)
+    const eventUrl = this.generateEventUrl(calendar, event);
+    
+    // Generate updated iCalendar data
+    const icalData = this.generateICalendarData(event);
+    
+    try {
+      // PUT request with If-Match header for conflict detection
+      const response = await this.put(eventUrl, icalData, {
+        'Content-Type': 'text/calendar; charset=utf-8',
+        'If-Match': `"${event.etag}"`
+      });
+      
+      // Check if update was successful (200 OK or 204 No Content)
+      if (response.status !== 200 && response.status !== 204) {
+        if (response.status === 412) {
+          throw new Error('Event update conflict: The event has been modified by another client. Please refresh and try again.');
+        }
+        throw new Error(`Event update failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's already a conflict error, re-throw as is
+        if (error.message.includes('Event update conflict')) {
+          throw error;
+        }
+        // If it's a network/HTTP error, wrap it with context
+        if (error.message.includes('Authentication failed') ||
+            error.message.includes('Access forbidden') ||
+            error.message.includes('Resource not found') ||
+            error.message.includes('Server error') ||
+            error.message.includes('Network error')) {
+          throw new Error(`Event update failed: ${error.message}`);
+        }
+        throw new Error(`Event update failed: ${error.message}`);
+      }
+      throw new Error('Event update failed: Unknown error');
+    }
   }
 
   public async createContact(addressBook: AddressBook, contact: Contact): Promise<void> {
@@ -495,8 +579,8 @@ export class DAVClient implements IDAVClient {
               uid: event.uid || '',
               summary: event.summary || '',
               description: event.description || undefined,
-              dtstart: event.startDate.toJSDate(),
-              dtend: event.endDate.toJSDate(),
+              dtstart: event.startDate ? event.startDate.toJSDate() : new Date(),
+              dtend: event.endDate ? event.endDate.toJSDate() : new Date(),
               location: event.location || undefined,
               etag
             };
@@ -649,5 +733,79 @@ export class DAVClient implements IDAVClient {
       // Property doesn't exist or error accessing it
     }
     return undefined;
+  }
+
+  /**
+   * Generate a unique URL for a calendar event
+   * Uses the event UID to create a consistent URL
+   */
+  private generateEventUrl(calendar: Calendar, event: CalendarEvent): string {
+    // Ensure calendar URL ends with /
+    const calendarUrl = calendar.url.endsWith('/') ? calendar.url : `${calendar.url}/`;
+    
+    // Generate filename from UID, ensuring it's URL-safe
+    const filename = `${event.uid}.ics`;
+    
+    return `${calendarUrl}${filename}`;
+  }
+
+  /**
+   * Generate iCalendar data from CalendarEvent
+   */
+  private generateICalendarData(event: CalendarEvent): string {
+    try {
+      // Format dates to iCalendar format (YYYYMMDDTHHMMSSZ)
+      const formatDate = (date: Date): string => {
+        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      };
+
+      const now = new Date();
+      const dtstart = formatDate(event.dtstart);
+      const dtend = formatDate(event.dtend);
+      const dtstamp = formatDate(now);
+      const created = formatDate(now);
+      const lastModified = formatDate(now);
+
+      // Build iCalendar string manually for reliability
+      let icalData = 'BEGIN:VCALENDAR\r\n';
+      icalData += 'VERSION:2.0\r\n';
+      icalData += 'PRODID:-//CalDAV-CardDAV-Client//EN\r\n';
+      icalData += 'CALSCALE:GREGORIAN\r\n';
+      icalData += 'BEGIN:VEVENT\r\n';
+      icalData += `UID:${event.uid}\r\n`;
+      icalData += `SUMMARY:${this.escapeICalValue(event.summary)}\r\n`;
+      
+      if (event.description) {
+        icalData += `DESCRIPTION:${this.escapeICalValue(event.description)}\r\n`;
+      }
+      
+      if (event.location) {
+        icalData += `LOCATION:${this.escapeICalValue(event.location)}\r\n`;
+      }
+      
+      icalData += `DTSTART:${dtstart}\r\n`;
+      icalData += `DTEND:${dtend}\r\n`;
+      icalData += `DTSTAMP:${dtstamp}\r\n`;
+      icalData += `CREATED:${created}\r\n`;
+      icalData += `LAST-MODIFIED:${lastModified}\r\n`;
+      icalData += 'END:VEVENT\r\n';
+      icalData += 'END:VCALENDAR\r\n';
+
+      return icalData;
+    } catch (error) {
+      throw new Error(`Failed to generate iCalendar data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Escape special characters in iCalendar values
+   */
+  private escapeICalValue(value: string): string {
+    return value
+      .replace(/\\/g, '\\\\')  // Escape backslashes
+      .replace(/;/g, '\\;')    // Escape semicolons
+      .replace(/,/g, '\\,')    // Escape commas
+      .replace(/\n/g, '\\n')   // Escape newlines
+      .replace(/\r/g, '');     // Remove carriage returns
   }
 }
