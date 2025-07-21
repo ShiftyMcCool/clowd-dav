@@ -1,20 +1,19 @@
 import { DAVClient } from '../DAVClient';
 import { DAVProvider } from '../../types/providers';
 import { AuthConfig } from '../../types/auth';
-import { Calendar, DateRange } from '../../types/dav';
+import { Calendar, AddressBook, DateRange } from '../../types/dav';
 
 // Mock fetch globally
-global.fetch = jest.fn();
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
 
 describe('DAVClient', () => {
   let davClient: DAVClient;
-  let mockFetch: jest.MockedFunction<typeof fetch>;
 
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
     
-    mockFetch = fetch as jest.MockedFunction<typeof fetch>;
     davClient = new DAVClient();
   });
 
@@ -675,20 +674,326 @@ END:VCALENDAR</c:calendar-data>
     });
   });
 
-  describe('placeholder methods', () => {
-    it('should throw not implemented error for discoverAddressBooks', async () => {
-      await expect(davClient.discoverAddressBooks()).rejects.toThrow(
-        'Not implemented yet - will be implemented in task 6'
+  describe('address book discovery', () => {
+    beforeEach(() => {
+      // Setup common mock response
+      const mockResponse = {
+        ok: true,
+        status: 207,
+        statusText: 'Multi-Status',
+        text: jest.fn().mockResolvedValue('<xml>test</xml>'),
+        headers: new Map([['content-type', 'application/xml']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const mockProvider = {
+        name: 'test-provider',
+        detectServer: jest.fn(),
+        getCalendarDiscoveryPath: jest.fn(),
+        getAddressBookDiscoveryPath: jest.fn().mockReturnValue('/dav.php/addressbooks/'),
+        customizeRequest: jest.fn()
+      };
+      
+      const authConfig: AuthConfig = {
+        caldavUrl: 'https://example.com/dav.php',
+        carddavUrl: 'https://example.com/dav.php',
+        username: 'testuser',
+        password: 'testpass'
+      };
+      
+      davClient.setProvider(mockProvider);
+      davClient.setAuthConfig(authConfig);
+    });
+
+    it('should discover address books successfully', async () => {
+      const mockXmlResponse = `<?xml version="1.0" encoding="utf-8"?>
+<d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+  <d:response>
+    <d:href>/dav.php/addressbooks/testuser/contacts/</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:displayname>Personal Contacts</d:displayname>
+        <d:resourcetype>
+          <d:collection/>
+          <card:addressbook/>
+        </d:resourcetype>
+        <card:addressbook-description>My personal contacts</card:addressbook-description>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/dav.php/addressbooks/testuser/work/</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:displayname>Work Contacts</d:displayname>
+        <d:resourcetype>
+          <d:collection/>
+          <card:addressbook/>
+        </d:resourcetype>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`;
+
+      const mockResponse = {
+        ok: true,
+        status: 207,
+        statusText: 'Multi-Status',
+        text: jest.fn().mockResolvedValue(mockXmlResponse),
+        headers: new Map([['content-type', 'application/xml']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const addressBooks = await davClient.discoverAddressBooks();
+
+      expect(addressBooks).toHaveLength(2);
+      expect(addressBooks[0]).toEqual({
+        url: 'https://example.com/dav.php/addressbooks/testuser/contacts/',
+        displayName: 'Personal Contacts'
+      });
+      expect(addressBooks[1]).toEqual({
+        url: 'https://example.com/dav.php/addressbooks/testuser/work/',
+        displayName: 'Work Contacts'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/addressbooks/testuser/',
+        expect.objectContaining({
+          method: 'PROPFIND',
+          headers: expect.objectContaining({
+            'Depth': '1'
+          })
+        })
       );
     });
 
-    it('should throw not implemented error for getContacts', async () => {
-      const addressBook = { url: 'test', displayName: 'test' };
+    it('should throw error when provider is not set', async () => {
+      davClient.setProvider(null as any);
       
-      await expect(davClient.getContacts(addressBook)).rejects.toThrow(
-        'Not implemented yet - will be implemented in task 6'
+      await expect(davClient.discoverAddressBooks()).rejects.toThrow(
+        'Provider not set. Please set a provider before discovering address books.'
       );
     });
+
+    it('should throw error when auth config is not set', async () => {
+      davClient.setAuthConfig(null as any);
+      
+      await expect(davClient.discoverAddressBooks()).rejects.toThrow(
+        'Authentication not configured. Please set auth config before discovering address books.'
+      );
+    });
+
+    it('should handle address book discovery errors', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+      
+      await expect(davClient.discoverAddressBooks()).rejects.toThrow(
+        'Address book discovery failed: Network error. Please check your connection and server URL.'
+      );
+    });
+
+    it('should handle malformed XML response', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 207,
+        statusText: 'Multi-Status',
+        text: jest.fn().mockResolvedValue('invalid xml'),
+        headers: new Map([['content-type', 'application/xml']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      await expect(davClient.discoverAddressBooks()).rejects.toThrow(
+        'Failed to parse address book discovery response:'
+      );
+    });
+  });
+
+  describe('contacts retrieval', () => {
+    beforeEach(() => {
+      const authConfig: AuthConfig = {
+        caldavUrl: 'https://example.com/dav.php',
+        carddavUrl: 'https://example.com/dav.php',
+        username: 'testuser',
+        password: 'testpass'
+      };
+      
+      davClient.setAuthConfig(authConfig);
+    });
+
+    it('should retrieve contacts successfully', async () => {
+      const mockXmlResponse = `<?xml version="1.0" encoding="utf-8"?>
+<d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+  <d:response>
+    <d:href>/dav.php/addressbooks/testuser/contacts/contact1.vcf</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:getetag>"12345"</d:getetag>
+        <card:address-data>BEGIN:VCARD
+VERSION:3.0
+UID:contact1@example.com
+FN:John Doe
+EMAIL:john@example.com
+TEL:+1234567890
+ORG:Example Corp
+END:VCARD</card:address-data>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`;
+
+      const mockResponse = {
+        ok: true,
+        status: 207,
+        statusText: 'Multi-Status',
+        text: jest.fn().mockResolvedValue(mockXmlResponse),
+        headers: new Map([['content-type', 'application/xml']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const addressBook = {
+        url: 'https://example.com/dav.php/addressbooks/testuser/contacts/',
+        displayName: 'Personal Contacts'
+      };
+
+      const contacts = await davClient.getContacts(addressBook);
+
+      expect(contacts).toHaveLength(1);
+      expect(contacts[0]).toEqual({
+        uid: 'contact1@example.com',
+        fn: 'John Doe',
+        email: ['john@example.com'],
+        tel: ['+1234567890'],
+        org: 'Example Corp',
+        etag: '12345'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/addressbooks/testuser/contacts/',
+        expect.objectContaining({
+          method: 'REPORT',
+          headers: expect.objectContaining({
+            'Depth': '1'
+          })
+        })
+      );
+    });
+
+    it('should throw error when auth config is not set', async () => {
+      davClient.setAuthConfig(null as any);
+      
+      const addressBook = {
+        url: 'https://example.com/test',
+        displayName: 'Test Address Book'
+      };
+      
+      await expect(davClient.getContacts(addressBook)).rejects.toThrow(
+        'Authentication not configured. Please set auth config before retrieving contacts.'
+      );
+    });
+
+    it('should handle contact retrieval errors', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+      
+      const addressBook = {
+        url: 'https://example.com/test',
+        displayName: 'Test Address Book'
+      };
+      
+      await expect(davClient.getContacts(addressBook)).rejects.toThrow(
+        'Contact retrieval failed: Network error. Please check your connection and server URL.'
+      );
+    });
+
+    it('should handle malformed vCard data gracefully', async () => {
+      const mockXmlResponse = `<?xml version="1.0" encoding="utf-8"?>
+<d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+  <d:response>
+    <d:href>/dav.php/addressbooks/testuser/contacts/contact1.vcf</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:getetag>"12345"</d:getetag>
+        <card:address-data>INVALID VCARD DATA</card:address-data>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`;
+
+      const mockResponse = {
+        ok: true,
+        status: 207,
+        statusText: 'Multi-Status',
+        text: jest.fn().mockResolvedValue(mockXmlResponse),
+        headers: new Map([['content-type', 'application/xml']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const addressBook = {
+        url: 'https://example.com/test',
+        displayName: 'Test Address Book'
+      };
+
+      // Should not throw error but return empty array (malformed contacts are skipped)
+      const contacts = await davClient.getContacts(addressBook);
+      expect(contacts).toHaveLength(0);
+    });
+
+    it('should handle contacts with missing properties', async () => {
+      const mockXmlResponse = `<?xml version="1.0" encoding="utf-8"?>
+<d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+  <d:response>
+    <d:href>/dav.php/addressbooks/testuser/contacts/contact1.vcf</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:getetag>"12345"</d:getetag>
+        <card:address-data>BEGIN:VCARD
+VERSION:3.0
+UID:contact1@example.com
+FN:John Doe
+END:VCARD</card:address-data>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`;
+
+      const mockResponse = {
+        ok: true,
+        status: 207,
+        statusText: 'Multi-Status',
+        text: jest.fn().mockResolvedValue(mockXmlResponse),
+        headers: new Map([['content-type', 'application/xml']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+
+      const addressBook = {
+        url: 'https://example.com/test',
+        displayName: 'Test Address Book'
+      };
+
+      const contacts = await davClient.getContacts(addressBook);
+
+      expect(contacts).toHaveLength(1);
+      expect(contacts[0]).toEqual({
+        uid: 'contact1@example.com',
+        fn: 'John Doe',
+        email: undefined,
+        tel: undefined,
+        org: undefined,
+        etag: '12345'
+      });
+    });
+  });
+
+  describe('placeholder methods', () => {
 
     it('should throw not implemented error for createEvent', async () => {
       const calendar = { url: 'test', displayName: 'test' };

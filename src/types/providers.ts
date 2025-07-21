@@ -1,5 +1,7 @@
 import { DAVRequest, Calendar, AddressBook, CalendarEvent, Contact, DateRange } from './dav';
 
+export type { DAVRequest };
+
 export interface DAVProvider {
   name: string;
   detectServer(baseUrl: string): Promise<boolean>;

@@ -12,6 +12,6 @@ export interface EncryptedCredentials {
 
 export interface AuthManager {
   authenticate(config: AuthConfig): Promise<boolean>;
-  getStoredCredentials(): AuthConfig | null;
+  getStoredCredentials(masterPassword?: string): Promise<AuthConfig | null>;
   clearCredentials(): void;
 }

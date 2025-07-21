@@ -103,6 +103,9 @@ global.DOMParser = class DOMParser {
                         if (calTag === 'calendar') {
                           return resourceMatch[1].includes('<c:calendar') ? [{}] : [];
                         }
+                        if (calTag === 'addressbook') {
+                          return resourceMatch[1].includes('<card:addressbook') ? [{}] : [];
+                        }
                         return [];
                       }
                     }];
@@ -119,6 +122,10 @@ global.DOMParser = class DOMParser {
                 }
                 if (tag === 'calendar-data') {
                   const dataMatch = responseContent.match(/<c:calendar-data[^>]*>([\s\S]*?)<\/c:calendar-data>/);
+                  return dataMatch ? [{ textContent: dataMatch[1] }] : [];
+                }
+                if (tag === 'address-data') {
+                  const dataMatch = responseContent.match(/<card:address-data[^>]*>([\s\S]*?)<\/card:address-data>/);
                   return dataMatch ? [{ textContent: dataMatch[1] }] : [];
                 }
                 return [];
