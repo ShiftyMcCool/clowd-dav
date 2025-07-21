@@ -458,6 +458,10 @@ export class DAVClient implements IDAVClient {
         if (error.message.includes('Event update conflict')) {
           throw error;
         }
+        // Handle 412 Precondition Failed specifically
+        if (error.message.includes('Server error (412)')) {
+          throw new Error('Event update conflict: The event has been modified by another client. Please refresh and try again.');
+        }
         // If it's a network/HTTP error, wrap it with context
         if (error.message.includes('Authentication failed') ||
             error.message.includes('Access forbidden') ||
@@ -472,12 +476,102 @@ export class DAVClient implements IDAVClient {
     }
   }
 
+  /**
+   * Create a new contact using PUT request with vCard data
+   * Implements CardDAV contact creation protocol
+   */
   public async createContact(addressBook: AddressBook, contact: Contact): Promise<void> {
-    throw new Error('Not implemented yet - will be implemented in task 10');
+    if (!this.authConfig) {
+      throw new Error('Authentication not configured. Please set auth config before creating contacts.');
+    }
+
+    // Generate unique URL for the new contact
+    const contactUrl = this.generateContactUrl(addressBook, contact);
+    
+    // Generate vCard data
+    const vcardData = this.generateVCardData(contact);
+    
+    try {
+      // PUT request to create the contact
+      const response = await this.put(contactUrl, vcardData, {
+        'Content-Type': 'text/vcard; charset=utf-8'
+      });
+      
+      // Check if creation was successful (201 Created or 204 No Content)
+      if (response.status !== 201 && response.status !== 204) {
+        throw new Error(`Contact creation failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (error.message.includes('Authentication failed') ||
+            error.message.includes('Access forbidden') ||
+            error.message.includes('Resource not found') ||
+            error.message.includes('Server error') ||
+            error.message.includes('Network error')) {
+          throw new Error(`Contact creation failed: ${error.message}`);
+        }
+        throw new Error(`Contact creation failed: ${error.message}`);
+      }
+      throw new Error('Contact creation failed: Unknown error');
+    }
   }
 
+  /**
+   * Update an existing contact using PUT request with ETag handling
+   * Implements CardDAV contact update protocol with conflict detection
+   */
   public async updateContact(addressBook: AddressBook, contact: Contact): Promise<void> {
-    throw new Error('Not implemented yet - will be implemented in task 10');
+    if (!this.authConfig) {
+      throw new Error('Authentication not configured. Please set auth config before updating contacts.');
+    }
+
+    if (!contact.etag) {
+      throw new Error('Contact ETag is required for updates to detect conflicts.');
+    }
+
+    // Generate contact URL (should be the same as the original)
+    const contactUrl = this.generateContactUrl(addressBook, contact);
+    
+    // Generate updated vCard data
+    const vcardData = this.generateVCardData(contact);
+    
+    try {
+      // PUT request with If-Match header for conflict detection
+      const response = await this.put(contactUrl, vcardData, {
+        'Content-Type': 'text/vcard; charset=utf-8',
+        'If-Match': `"${contact.etag}"`
+      });
+      
+      // Check if update was successful (200 OK or 204 No Content)
+      if (response.status !== 200 && response.status !== 204) {
+        if (response.status === 412) {
+          throw new Error('Contact update conflict: The contact has been modified by another client. Please refresh and try again.');
+        }
+        throw new Error(`Contact update failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's already a conflict error, re-throw as is
+        if (error.message.includes('Contact update conflict')) {
+          throw error;
+        }
+        // Handle 412 Precondition Failed specifically
+        if (error.message.includes('Server error (412)')) {
+          throw new Error('Contact update conflict: The contact has been modified by another client. Please refresh and try again.');
+        }
+        // If it's a network/HTTP error, wrap it with context
+        if (error.message.includes('Authentication failed') ||
+            error.message.includes('Access forbidden') ||
+            error.message.includes('Resource not found') ||
+            error.message.includes('Server error') ||
+            error.message.includes('Network error')) {
+          throw new Error(`Contact update failed: ${error.message}`);
+        }
+        throw new Error(`Contact update failed: ${error.message}`);
+      }
+      throw new Error('Contact update failed: Unknown error');
+    }
   }
 
   /**
@@ -801,6 +895,70 @@ export class DAVClient implements IDAVClient {
    * Escape special characters in iCalendar values
    */
   private escapeICalValue(value: string): string {
+    return value
+      .replace(/\\/g, '\\\\')  // Escape backslashes
+      .replace(/;/g, '\\;')    // Escape semicolons
+      .replace(/,/g, '\\,')    // Escape commas
+      .replace(/\n/g, '\\n')   // Escape newlines
+      .replace(/\r/g, '');     // Remove carriage returns
+  }
+
+  /**
+   * Generate a unique URL for a contact
+   * Uses the contact UID to create a consistent URL
+   */
+  private generateContactUrl(addressBook: AddressBook, contact: Contact): string {
+    // Ensure address book URL ends with /
+    const addressBookUrl = addressBook.url.endsWith('/') ? addressBook.url : `${addressBook.url}/`;
+    
+    // Generate filename from UID, ensuring it's URL-safe
+    const filename = `${contact.uid}.vcf`;
+    
+    return `${addressBookUrl}${filename}`;
+  }
+
+  /**
+   * Generate vCard data from Contact
+   */
+  private generateVCardData(contact: Contact): string {
+    try {
+      // Build vCard string manually for reliability
+      let vcardData = 'BEGIN:VCARD\r\n';
+      vcardData += 'VERSION:3.0\r\n';
+      vcardData += `UID:${contact.uid}\r\n`;
+      vcardData += `FN:${this.escapeVCardValue(contact.fn)}\r\n`;
+      
+      // Add email addresses
+      if (contact.email && contact.email.length > 0) {
+        for (const email of contact.email) {
+          vcardData += `EMAIL:${this.escapeVCardValue(email)}\r\n`;
+        }
+      }
+      
+      // Add phone numbers
+      if (contact.tel && contact.tel.length > 0) {
+        for (const tel of contact.tel) {
+          vcardData += `TEL:${this.escapeVCardValue(tel)}\r\n`;
+        }
+      }
+      
+      // Add organization
+      if (contact.org) {
+        vcardData += `ORG:${this.escapeVCardValue(contact.org)}\r\n`;
+      }
+      
+      vcardData += 'END:VCARD\r\n';
+
+      return vcardData;
+    } catch (error) {
+      throw new Error(`Failed to generate vCard data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Escape special characters in vCard values
+   */
+  private escapeVCardValue(value: string): string {
     return value
       .replace(/\\/g, '\\\\')  // Escape backslashes
       .replace(/;/g, '\\;')    // Escape semicolons

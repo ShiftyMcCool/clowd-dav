@@ -1627,22 +1627,297 @@ END:VCARD</card:address-data>
     });
   });
 
-  describe('placeholder methods', () => {
-    it('should throw not implemented error for createContact', async () => {
+  describe('contact creation', () => {
+    beforeEach(() => {
+      const authConfig: AuthConfig = {
+        caldavUrl: 'https://example.com/dav.php',
+        carddavUrl: 'https://example.com/dav.php',
+        username: 'testuser',
+        password: 'testpass'
+      };
+      
+      davClient.setAuthConfig(authConfig);
+
+      // Setup successful creation response
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        statusText: 'Created',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map([['content-type', 'text/vcard']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+    });
+
+    it('should create contact successfully', async () => {
+      const addressBook = {
+        url: 'https://example.com/dav.php/addressbooks/testuser/contacts/',
+        displayName: 'Personal Contacts'
+      };
+
+      const contact = {
+        uid: 'contact-123',
+        fn: 'John Doe',
+        email: ['john@example.com', 'john.doe@work.com'],
+        tel: ['+1234567890', '+0987654321'],
+        org: 'Example Corp'
+      };
+
+      await davClient.createContact(addressBook, contact);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/addressbooks/testuser/contacts/contact-123.vcf',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'Content-Type': 'text/vcard; charset=utf-8'
+          })
+        })
+      );
+
+      const putCall = mockFetch.mock.calls[0];
+      const vcardData = putCall[1].body;
+      
+      expect(vcardData).toContain('BEGIN:VCARD');
+      expect(vcardData).toContain('VERSION:3.0');
+      expect(vcardData).toContain('UID:contact-123');
+      expect(vcardData).toContain('FN:John Doe');
+      expect(vcardData).toContain('EMAIL:john@example.com');
+      expect(vcardData).toContain('EMAIL:john.doe@work.com');
+      expect(vcardData).toContain('TEL:+1234567890');
+      expect(vcardData).toContain('TEL:+0987654321');
+      expect(vcardData).toContain('ORG:Example Corp');
+      expect(vcardData).toContain('END:VCARD');
+    });
+
+    it('should create contact with minimal data', async () => {
+      const addressBook = {
+        url: 'https://example.com/dav.php/addressbooks/testuser/contacts/',
+        displayName: 'Personal Contacts'
+      };
+
+      const contact = {
+        uid: 'minimal-contact-123',
+        fn: 'Jane Smith'
+      };
+
+      await davClient.createContact(addressBook, contact);
+
+      const putCall = mockFetch.mock.calls[0];
+      const vcardData = putCall[1].body;
+      
+      expect(vcardData).toContain('BEGIN:VCARD');
+      expect(vcardData).toContain('UID:minimal-contact-123');
+      expect(vcardData).toContain('FN:Jane Smith');
+      expect(vcardData).toContain('END:VCARD');
+      expect(vcardData).not.toContain('EMAIL:');
+      expect(vcardData).not.toContain('TEL:');
+      expect(vcardData).not.toContain('ORG:');
+    });
+
+    it('should handle address book URL without trailing slash', async () => {
+      const addressBook = {
+        url: 'https://example.com/dav.php/addressbooks/testuser/contacts',
+        displayName: 'Personal Contacts'
+      };
+
+      const contact = {
+        uid: 'contact-123',
+        fn: 'John Doe'
+      };
+
+      await davClient.createContact(addressBook, contact);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/addressbooks/testuser/contacts/contact-123.vcf',
+        expect.any(Object)
+      );
+    });
+
+    it('should throw error when auth config is not set', async () => {
+      davClient.setAuthConfig(null as any);
+      
       const addressBook = { url: 'test', displayName: 'test' };
       const contact = { uid: 'test', fn: 'test' };
       
       await expect(davClient.createContact(addressBook, contact)).rejects.toThrow(
-        'Not implemented yet - will be implemented in task 10'
+        'Authentication not configured. Please set auth config before creating contacts.'
       );
     });
 
-    it('should throw not implemented error for updateContact', async () => {
+    it('should handle contact creation errors', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+      
       const addressBook = { url: 'test', displayName: 'test' };
       const contact = { uid: 'test', fn: 'test' };
       
+      await expect(davClient.createContact(addressBook, contact)).rejects.toThrow(
+        'Contact creation failed: Network error. Please check your connection and server URL.'
+      );
+    });
+
+    it('should handle HTTP error responses', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden'
+      };
+      mockFetch.mockResolvedValue(mockResponse as any);
+      
+      const addressBook = { url: 'test', displayName: 'test' };
+      const contact = { uid: 'test', fn: 'test' };
+      
+      await expect(davClient.createContact(addressBook, contact)).rejects.toThrow(
+        'Contact creation failed: Access forbidden. You may not have permission to access this resource.'
+      );
+    });
+
+    it('should handle special characters in contact properties', async () => {
+      const addressBook = {
+        url: 'https://example.com/dav.php/addressbooks/testuser/contacts/',
+        displayName: 'Personal Contacts'
+      };
+
+      const contact = {
+        uid: 'special-chars-123',
+        fn: 'José María García',
+        email: ['josé@example.com'],
+        tel: ['+34 123 456 789'],
+        org: 'Empresa & Compañía, S.L.'
+      };
+
+      await davClient.createContact(addressBook, contact);
+
+      const putCall = mockFetch.mock.calls[0];
+      const vcardData = putCall[1].body;
+      
+      expect(vcardData).toContain('FN:José María García');
+      expect(vcardData).toContain('EMAIL:josé@example.com');
+      expect(vcardData).toContain('TEL:+34 123 456 789');
+      expect(vcardData).toContain('ORG:Empresa & Compañía\\, S.L.');
+    });
+  });
+
+  describe('contact update', () => {
+    beforeEach(() => {
+      const authConfig: AuthConfig = {
+        caldavUrl: 'https://example.com/dav.php',
+        carddavUrl: 'https://example.com/dav.php',
+        username: 'testuser',
+        password: 'testpass'
+      };
+      
+      davClient.setAuthConfig(authConfig);
+
+      // Setup successful update response
+      const mockResponse = {
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map([['content-type', 'text/vcard']])
+      };
+      
+      mockFetch.mockResolvedValue(mockResponse as any);
+    });
+
+    it('should update contact successfully', async () => {
+      const addressBook = {
+        url: 'https://example.com/dav.php/addressbooks/testuser/contacts/',
+        displayName: 'Personal Contacts'
+      };
+
+      const contact = {
+        uid: 'contact-123',
+        fn: 'John Doe Updated',
+        email: ['john.updated@example.com'],
+        tel: ['+1234567890'],
+        org: 'New Company',
+        etag: 'abc123'
+      };
+
+      await davClient.updateContact(addressBook, contact);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/dav.php/addressbooks/testuser/contacts/contact-123.vcf',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'Content-Type': 'text/vcard; charset=utf-8',
+            'If-Match': '"abc123"'
+          })
+        })
+      );
+
+      const putCall = mockFetch.mock.calls[0];
+      const vcardData = putCall[1].body;
+      
+      expect(vcardData).toContain('FN:John Doe Updated');
+      expect(vcardData).toContain('EMAIL:john.updated@example.com');
+      expect(vcardData).toContain('ORG:New Company');
+    });
+
+    it('should throw error when ETag is missing', async () => {
+      const addressBook = { url: 'test', displayName: 'test' };
+      const contact = { uid: 'test', fn: 'test' }; // No etag
+      
       await expect(davClient.updateContact(addressBook, contact)).rejects.toThrow(
-        'Not implemented yet - will be implemented in task 10'
+        'Contact ETag is required for updates to detect conflicts.'
+      );
+    });
+
+    it('should throw error when auth config is not set', async () => {
+      davClient.setAuthConfig(null as any);
+      
+      const addressBook = { url: 'test', displayName: 'test' };
+      const contact = { uid: 'test', fn: 'test', etag: 'abc123' };
+      
+      await expect(davClient.updateContact(addressBook, contact)).rejects.toThrow(
+        'Authentication not configured. Please set auth config before updating contacts.'
+      );
+    });
+
+    it('should handle conflict errors (412 Precondition Failed)', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 412,
+        statusText: 'Precondition Failed'
+      };
+      mockFetch.mockResolvedValue(mockResponse as any);
+      
+      const addressBook = { url: 'test', displayName: 'test' };
+      const contact = { uid: 'test', fn: 'test', etag: 'abc123' };
+      
+      await expect(davClient.updateContact(addressBook, contact)).rejects.toThrow(
+        'Contact update conflict: The contact has been modified by another client. Please refresh and try again.'
+      );
+    });
+
+    it('should handle other HTTP error responses', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 404,
+        statusText: 'Not Found'
+      };
+      mockFetch.mockResolvedValue(mockResponse as any);
+      
+      const addressBook = { url: 'test', displayName: 'test' };
+      const contact = { uid: 'test', fn: 'test', etag: 'abc123' };
+      
+      await expect(davClient.updateContact(addressBook, contact)).rejects.toThrow(
+        'Contact update failed: Resource not found. Please check the server URL.'
+      );
+    });
+
+    it('should handle network errors', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+      
+      const addressBook = { url: 'test', displayName: 'test' };
+      const contact = { uid: 'test', fn: 'test', etag: 'abc123' };
+      
+      await expect(davClient.updateContact(addressBook, contact)).rejects.toThrow(
+        'Contact update failed: Network error. Please check your connection and server URL.'
       );
     });
   });
