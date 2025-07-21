@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SetupForm } from './components/SetupForm';
 import { CalendarView } from './components/Calendar/CalendarView';
+import { EventForm } from './components/Calendar/EventForm';
 import { AuthConfig } from './types/auth';
 import { AuthManager } from './services/AuthManager';
 import { DAVClient } from './services/DAVClient';
@@ -16,6 +17,10 @@ function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [currentView, setCurrentView] = useState<'calendar' | 'contacts'>('calendar');
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [selectedCalendar, setSelectedCalendar] = useState<Calendar | null>(null);
+  const [currentDateRange, setCurrentDateRange] = useState<DateRange | null>(null);
 
   const authManager = AuthManager.getInstance();
   const davClient = new DAVClient();
@@ -101,19 +106,59 @@ function App() {
   };
 
   const handleDateRangeChange = (dateRange: DateRange) => {
+    setCurrentDateRange(dateRange);
     loadEvents(dateRange);
   };
 
   const handleEventClick = (event: CalendarEvent) => {
-    // TODO: Implement event editing in future tasks
-    console.log('Event clicked:', event);
-    alert(`Event: ${event.summary}\nTime: ${event.dtstart.toLocaleString()} - ${event.dtend.toLocaleString()}`);
+    setEditingEvent(event);
+    setShowEventForm(true);
   };
 
   const handleCreateEvent = (date: Date) => {
-    // TODO: Implement event creation in future tasks
-    console.log('Create event for date:', date);
-    alert(`Create event functionality will be implemented in future tasks.\nSelected date: ${date.toLocaleDateString()}`);
+    // Set default calendar and show form
+    if (calendars.length > 0) {
+      setSelectedCalendar(calendars[0]);
+      setEditingEvent(null);
+      setShowEventForm(true);
+      // Store the initial date for the form
+      setInitialDate(date);
+    }
+  };
+
+  const [initialDate, setInitialDate] = useState<Date | undefined>(undefined);
+
+  const handleEventSave = async (eventData: CalendarEvent, calendar: Calendar) => {
+    try {
+      if (editingEvent) {
+        // Update existing event
+        await davClient.updateEvent(calendar, eventData);
+      } else {
+        // Create new event
+        await davClient.createEvent(calendar, eventData);
+      }
+
+      // Refresh events after successful save
+      if (currentDateRange) {
+        await loadEvents(currentDateRange);
+      }
+
+      // Close form
+      setShowEventForm(false);
+      setEditingEvent(null);
+      setSelectedCalendar(null);
+      setInitialDate(undefined);
+    } catch (error) {
+      console.error('Error saving event:', error);
+      throw error; // Re-throw to let the form handle the error display
+    }
+  };
+
+  const handleEventFormCancel = () => {
+    setShowEventForm(false);
+    setEditingEvent(null);
+    setSelectedCalendar(null);
+    setInitialDate(undefined);
   };
 
   const handleLogout = () => {
@@ -179,6 +224,19 @@ function App() {
             <h2>Contacts</h2>
             <p>Contact management will be implemented in future tasks.</p>
           </div>
+        )}
+
+        {/* Event Form Modal */}
+        {showEventForm && (
+          <EventForm
+            event={editingEvent || undefined}
+            calendars={calendars}
+            selectedCalendar={selectedCalendar || undefined}
+            onSave={handleEventSave}
+            onCancel={handleEventFormCancel}
+            isEditing={!!editingEvent}
+            initialDate={initialDate}
+          />
         )}
       </main>
     </div>

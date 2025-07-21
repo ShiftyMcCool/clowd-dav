@@ -14,7 +14,7 @@ import {
   DAVRequest, 
   DAVResponse 
 } from '../types/dav';
-import * as ICAL from 'ical.js';
+import ICAL from 'ical.js';
 const vcardParser = require('vcard-parser');
 
 export class DAVClient implements IDAVClient {
