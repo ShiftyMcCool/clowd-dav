@@ -367,7 +367,9 @@ export class DAVClient implements IDAVClient {
 
     try {
       const response = await this.propfind(discoveryUrl, propfindBody, "1");
-      return this.parseAddressBookDiscoveryResponse(response.data, baseUrl);
+      // Use the server base URL (without the path) for constructing full URLs
+      const serverBaseUrl = new URL(this.authConfig.carddavUrl).origin;
+      return this.parseAddressBookDiscoveryResponse(response.data, serverBaseUrl);
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a parsing error, re-throw as is
