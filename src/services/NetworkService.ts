@@ -119,26 +119,18 @@ export class NetworkService {
   }
 
   /**
-   * Check network connectivity by making a small request
-   * More reliable than just using navigator.onLine
+   * Check network connectivity
+   * Uses navigator.onLine as the primary indicator since it's reliable for most use cases
    */
   public async checkConnectivity(): Promise<boolean> {
     try {
-      // Try to fetch a small resource to check connectivity
-      // Using a timestamp to prevent caching
-      const response = await fetch(`/ping?t=${Date.now()}`, {
-        method: 'HEAD',
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      const online = response.ok;
+      // Use navigator.onLine as the primary connectivity indicator
+      // This is reliable and doesn't make unnecessary network requests
+      const online = navigator.onLine;
       this.updateStatus(online);
       return online;
     } catch (error) {
-      // If fetch fails, we're offline
+      // If anything fails, assume offline
       this.updateStatus(false);
       return false;
     }
@@ -146,9 +138,9 @@ export class NetworkService {
 
   /**
    * Start periodic network checking
-   * @param intervalMs Check interval in milliseconds (default: 30000)
+   * @param intervalMs Check interval in milliseconds (default: 120000 - 2 minutes)
    */
-  public startPeriodicChecking(intervalMs: number = 30000): void {
+  public startPeriodicChecking(intervalMs: number = 120000): void {
     if (this.checkInterval !== null) {
       this.stopPeriodicChecking();
     }
