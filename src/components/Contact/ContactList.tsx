@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Contact, AddressBook } from '../../types/dav';
-import { DAVClient } from '../../services/DAVClient';
+import { SyncService } from '../../services/SyncService';
 import './ContactList.css';
 
 interface ContactListProps {
   addressBook: AddressBook;
-  davClient: DAVClient;
+  syncService: SyncService;
   onContactSelect: (contact: Contact) => void;
   onAddContact: () => void;
 }
 
 const ContactList: React.FC<ContactListProps> = ({ 
   addressBook, 
-  davClient, 
+  syncService, 
   onContactSelect, 
   onAddContact 
 }) => {
@@ -27,7 +27,7 @@ const ContactList: React.FC<ContactListProps> = ({
       try {
         setLoading(true);
         setError(null);
-        const fetchedContacts = await davClient.getContacts(addressBook);
+        const fetchedContacts = await syncService.getContacts(addressBook);
         setContacts(fetchedContacts);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load contacts');
@@ -38,7 +38,7 @@ const ContactList: React.FC<ContactListProps> = ({
     };
 
     fetchContacts();
-  }, [addressBook, davClient]);
+  }, [addressBook, syncService]);
 
   const filteredContacts = contacts.filter(contact => {
     const searchLower = searchTerm.toLowerCase();

@@ -5,14 +5,17 @@ import { CalendarView } from './components/Calendar/CalendarView';
 import { EventForm } from './components/Calendar/EventForm';
 import { ContactList, ContactDetail, ContactForm } from './components/Contact';
 import { Navigation } from './components/Navigation';
-import { LoadingIndicator, ErrorMessage, OfflineIndicator } from './components/common';
+import { LoadingIndicator, ErrorMessage, OfflineIndicator, SyncStatusIndicator } from './components/common';
 import { AuthConfig } from './types/auth';
 import { AuthManager } from './services/AuthManager';
 import { DAVClient } from './services/DAVClient';
+import { SyncService } from './services/SyncService';
+import { CacheService } from './services/CacheService';
 import { ProviderFactory } from './providers/ProviderFactory';
 import { Calendar, CalendarEvent, DateRange, AddressBook, Contact } from './types/dav';
 import { ErrorHandlingService, ErrorMessage as ErrorMessageType } from './services/ErrorHandlingService';
 import { NetworkService } from './services/NetworkService';
+import { useSync } from './hooks/useSync';
 import './App.css';
 
 // Protected route component
@@ -53,14 +56,15 @@ function App() {
   
   // Error handling and offline state
   const [errors, setErrors] = useState<ErrorMessageType[]>([]);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [pendingOperationCount, setPendingOperationCount] = useState(0);
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'pending' | 'error'>('synced');
 
   const authManager = AuthManager.getInstance();
   const davClient = new DAVClient();
   const errorService = ErrorHandlingService.getInstance();
   const networkService = NetworkService.getInstance();
+  
+  // Initialize sync service
+  const [syncService] = useState(() => new SyncService(davClient));
+  const sync = useSync(syncService);
 
   // Initialize error handling service
   useEffect(() => {
@@ -73,55 +77,15 @@ function App() {
     };
   }, []);
 
-  // Initialize network service
+  // Initialize sync service when authenticated
   useEffect(() => {
-    const unsubscribe = networkService.subscribe((status) => {
-      setIsOffline(!status.online);
-      
-      // When coming back online, try to execute pending operations
-      if (status.online) {
-        executePendingOperations();
-      }
-    });
-    
-    // Update pending operation count when it changes
-    const checkPendingOperations = () => {
-      setPendingOperationCount(networkService.getPendingOperationCount());
-      
-      // Update sync status based on pending operations
-      if (networkService.getPendingOperationCount() > 0) {
-        if (networkService.isOnline()) {
-          setSyncStatus('syncing');
-        } else {
-          setSyncStatus('pending');
-        }
-      } else {
-        setSyncStatus('synced');
-      }
-    };
-    
-    // Check pending operations periodically
-    const intervalId = setInterval(checkPendingOperations, 5000);
-    
-    return () => {
-      unsubscribe();
-      clearInterval(intervalId);
-    };
-  }, []);
-
-  // Execute pending operations when back online
-  const executePendingOperations = useCallback(async () => {
-    if (networkService.isOnline() && networkService.getPendingOperationCount() > 0) {
-      setSyncStatus('syncing');
-      try {
-        await networkService.executePendingOperations();
-        setSyncStatus('synced');
-      } catch (error) {
-        setSyncStatus('error');
-        errorService.reportError('Failed to sync some pending changes. Please try again later.');
-      }
+    if (isAuthenticated && currentConfig) {
+      // Perform initial sync
+      sync.fullSync().catch(error => {
+        console.error('Initial sync failed:', error);
+      });
     }
-  }, [errorService, networkService]);
+  }, [isAuthenticated, currentConfig, sync]);
 
   useEffect(() => {
     // Check if user has stored credentials and try to load them
@@ -157,9 +121,8 @@ function App() {
       if (provider) {
         davClient.setProvider(provider);
         
-        // Load calendars and address books
-        await loadCalendars();
-        await loadAddressBooks();
+        // Load calendars and address books using sync service
+        await loadCalendarsAndAddressBooks();
       } else {
         console.error('No compatible provider found for the server');
       }
@@ -168,54 +131,29 @@ function App() {
     }
   };
 
-  const loadCalendars = async () => {
+  const loadCalendarsAndAddressBooks = async () => {
     try {
-      setCalendarLoading(true);
+      await sync.syncCalendars();
+      await sync.syncAddressBooks();
       
-      // Check if we're offline
-      if (!networkService.isOnline()) {
-        // If offline, use cached calendars if available
-        const cachedCalendars = localStorage.getItem('cachedCalendars');
-        if (cachedCalendars) {
-          setCalendars(JSON.parse(cachedCalendars));
-          errorService.reportError('You are offline. Showing cached calendars.', 'info');
-        } else {
-          errorService.reportError('Cannot load calendars while offline.', 'warning');
-        }
-        setCalendarLoading(false);
-        return;
+      // Update local state with cached data
+      const cachedCalendars = CacheService.getCachedCalendars();
+      const cachedAddressBooks = CacheService.getCachedAddressBooks();
+      
+      setCalendars(cachedCalendars);
+      setAddressBooks(cachedAddressBooks);
+      
+      // Select first address book by default
+      if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
+        setSelectedAddressBook(cachedAddressBooks[0]);
       }
-      
-      const discoveredCalendars = await davClient.discoverCalendars();
-      setCalendars(discoveredCalendars);
-      
-      // Cache calendars for offline use
-      localStorage.setItem('cachedCalendars', JSON.stringify(discoveredCalendars));
     } catch (error) {
-      console.error('Error loading calendars:', error);
-      
-      // Create retry function
-      const retryAction = async () => {
-        await loadCalendars();
-      };
-      
-      // Report error with retry option
-      errorService.reportError(
-        `Failed to load calendars: ${errorService.formatErrorMessage(error)}`,
-        'error',
-        retryAction
-      );
-      
-      // Try to use cached calendars if available
-      const cachedCalendars = localStorage.getItem('cachedCalendars');
-      if (cachedCalendars) {
-        setCalendars(JSON.parse(cachedCalendars));
-        errorService.reportError('Showing cached calendars.', 'info');
-      }
-    } finally {
-      setCalendarLoading(false);
+      console.error('Error loading calendars and address books:', error);
+      errorService.reportError(`Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
+
+
 
   const loadEvents = async (dateRange: DateRange) => {
     if (calendars.length === 0) return;
@@ -223,36 +161,13 @@ function App() {
     try {
       setCalendarLoading(true);
       
-      // Check if we're offline
-      if (!networkService.isOnline()) {
-        // If offline, use cached events if available
-        const cachedEventsKey = `cachedEvents_${dateRange.start.toISOString()}_${dateRange.end.toISOString()}`;
-        const cachedEvents = localStorage.getItem(cachedEventsKey);
-        
-        if (cachedEvents) {
-          const parsedEvents = JSON.parse(cachedEvents);
-          // Convert string dates back to Date objects
-          const eventsWithDates = parsedEvents.map((event: any) => ({
-            ...event,
-            dtstart: new Date(event.dtstart),
-            dtend: new Date(event.dtend)
-          }));
-          setEvents(eventsWithDates);
-          errorService.reportError('You are offline. Showing cached events.', 'info');
-        } else {
-          errorService.reportError('Cannot load events while offline.', 'warning');
-        }
-        setCalendarLoading(false);
-        return;
-      }
-      
       const allEvents: CalendarEvent[] = [];
       const failedCalendars: string[] = [];
       
-      // Load events from all calendars
+      // Load events from all calendars using sync service
       for (const calendar of calendars) {
         try {
-          const calendarEvents = await davClient.getEvents(calendar, dateRange);
+          const calendarEvents = await sync.getEvents(calendar, dateRange);
           allEvents.push(...calendarEvents);
         } catch (error) {
           console.error(`Error loading events from calendar ${calendar.displayName}:`, error);
@@ -274,10 +189,6 @@ function App() {
       }
       
       setEvents(allEvents);
-      
-      // Cache events for offline use
-      const cachedEventsKey = `cachedEvents_${dateRange.start.toISOString()}_${dateRange.end.toISOString()}`;
-      localStorage.setItem(cachedEventsKey, JSON.stringify(allEvents));
     } catch (error) {
       console.error('Error loading events:', error);
       
@@ -292,22 +203,6 @@ function App() {
         'error',
         retryAction
       );
-      
-      // Try to use cached events if available
-      const cachedEventsKey = `cachedEvents_${dateRange.start.toISOString()}_${dateRange.end.toISOString()}`;
-      const cachedEvents = localStorage.getItem(cachedEventsKey);
-      
-      if (cachedEvents) {
-        const parsedEvents = JSON.parse(cachedEvents);
-        // Convert string dates back to Date objects
-        const eventsWithDates = parsedEvents.map((event: any) => ({
-          ...event,
-          dtstart: new Date(event.dtstart),
-          dtend: new Date(event.dtend)
-        }));
-        setEvents(eventsWithDates);
-        errorService.reportError('Showing cached events.', 'info');
-      }
     } finally {
       setCalendarLoading(false);
     }
@@ -338,74 +233,12 @@ function App() {
 
   const handleEventSave = async (eventData: CalendarEvent, calendar: Calendar) => {
     try {
-      // Check if we're offline
-      if (!networkService.isOnline()) {
-        // If offline, store the operation for later execution
-        const operationId = `event_${Date.now()}_${eventData.uid}`;
-        const operation = async () => {
-          if (editingEvent) {
-            await davClient.updateEvent(calendar, eventData);
-          } else {
-            await davClient.createEvent(calendar, eventData);
-          }
-        };
-        
-        networkService.addPendingOperation(operationId, operation);
-        
-        // Update local cache to reflect the change immediately
-        if (currentDateRange) {
-          const cachedEventsKey = `cachedEvents_${currentDateRange.start.toISOString()}_${currentDateRange.end.toISOString()}`;
-          const cachedEvents = localStorage.getItem(cachedEventsKey);
-          
-          if (cachedEvents) {
-            let parsedEvents = JSON.parse(cachedEvents);
-            
-            if (editingEvent) {
-              // Update existing event in cache
-              parsedEvents = parsedEvents.map((event: any) => 
-                event.uid === eventData.uid ? eventData : event
-              );
-            } else {
-              // Add new event to cache
-              parsedEvents.push(eventData);
-            }
-            
-            localStorage.setItem(cachedEventsKey, JSON.stringify(parsedEvents));
-          }
-          
-          // Update the events state
-          if (editingEvent) {
-            setEvents(events.map(event => 
-              event.uid === eventData.uid ? eventData : event
-            ));
-          } else {
-            setEvents([...events, eventData]);
-          }
-        }
-        
-        errorService.reportError(
-          `You are offline. ${editingEvent ? 'Changes' : 'New event'} will be saved when you reconnect.`,
-          'info'
-        );
-        
-        // Close form
-        setShowEventForm(false);
-        setEditingEvent(null);
-        setSelectedCalendar(null);
-        setInitialDate(undefined);
-        
-        // Update sync status
-        setSyncStatus('pending');
-        return;
-      }
-      
-      // If online, proceed normally
       if (editingEvent) {
-        // Update existing event
-        await davClient.updateEvent(calendar, eventData);
+        // Update existing event using sync service
+        await sync.updateEvent(calendar, eventData);
       } else {
-        // Create new event
-        await davClient.createEvent(calendar, eventData);
+        // Create new event using sync service
+        await sync.createEvent(calendar, eventData);
       }
 
       // Refresh events after successful save
@@ -439,41 +272,18 @@ function App() {
     setInitialDate(undefined);
   };
 
-  // Load address books
+  // Load address books using sync service
   const loadAddressBooks = async () => {
     try {
       setContactsLoading(true);
+      await sync.syncAddressBooks();
       
-      // Check if we're offline
-      if (!networkService.isOnline()) {
-        // If offline, use cached address books if available
-        const cachedAddressBooks = localStorage.getItem('cachedAddressBooks');
-        if (cachedAddressBooks) {
-          const parsedAddressBooks = JSON.parse(cachedAddressBooks);
-          setAddressBooks(parsedAddressBooks);
-          
-          // Select the first address book by default if available
-          if (parsedAddressBooks.length > 0 && !selectedAddressBook) {
-            setSelectedAddressBook(parsedAddressBooks[0]);
-          }
-          
-          errorService.reportError('You are offline. Showing cached address books.', 'info');
-        } else {
-          errorService.reportError('Cannot load address books while offline.', 'warning');
-        }
-        setContactsLoading(false);
-        return;
-      }
-      
-      const discoveredAddressBooks = await davClient.discoverAddressBooks();
-      setAddressBooks(discoveredAddressBooks);
-      
-      // Cache address books for offline use
-      localStorage.setItem('cachedAddressBooks', JSON.stringify(discoveredAddressBooks));
+      const cachedAddressBooks = CacheService.getCachedAddressBooks();
+      setAddressBooks(cachedAddressBooks);
       
       // Select the first address book by default if available
-      if (discoveredAddressBooks.length > 0 && !selectedAddressBook) {
-        setSelectedAddressBook(discoveredAddressBooks[0]);
+      if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
+        setSelectedAddressBook(cachedAddressBooks[0]);
       }
     } catch (error) {
       console.error('Error loading address books:', error);
@@ -489,20 +299,6 @@ function App() {
         'error',
         retryAction
       );
-      
-      // Try to use cached address books if available
-      const cachedAddressBooks = localStorage.getItem('cachedAddressBooks');
-      if (cachedAddressBooks) {
-        const parsedAddressBooks = JSON.parse(cachedAddressBooks);
-        setAddressBooks(parsedAddressBooks);
-        
-        // Select the first address book by default if available
-        if (parsedAddressBooks.length > 0 && !selectedAddressBook) {
-          setSelectedAddressBook(parsedAddressBooks[0]);
-        }
-        
-        errorService.reportError('Showing cached address books.', 'info');
-      }
     } finally {
       setContactsLoading(false);
     }
@@ -533,62 +329,12 @@ function App() {
     if (!selectedAddressBook) return;
     
     try {
-      // Check if we're offline
-      if (!networkService.isOnline()) {
-        // If offline, store the operation for later execution
-        const operationId = `contact_${Date.now()}_${contactData.uid}`;
-        const operation = async () => {
-          if (editingContact) {
-            await davClient.updateContact(selectedAddressBook, contactData);
-          } else {
-            await davClient.createContact(selectedAddressBook, contactData);
-          }
-        };
-        
-        networkService.addPendingOperation(operationId, operation);
-        
-        // Update local cache to reflect the change immediately
-        const cachedContactsKey = `cachedContacts_${selectedAddressBook.url}`;
-        const cachedContacts = localStorage.getItem(cachedContactsKey);
-        
-        if (cachedContacts) {
-          let parsedContacts = JSON.parse(cachedContacts);
-          
-          if (editingContact) {
-            // Update existing contact in cache
-            parsedContacts = parsedContacts.map((contact: any) => 
-              contact.uid === contactData.uid ? contactData : contact
-            );
-          } else {
-            // Add new contact to cache
-            parsedContacts.push(contactData);
-          }
-          
-          localStorage.setItem(cachedContactsKey, JSON.stringify(parsedContacts));
-        }
-        
-        errorService.reportError(
-          `You are offline. ${editingContact ? 'Changes' : 'New contact'} will be saved when you reconnect.`,
-          'info'
-        );
-        
-        // Close form and reset state
-        setShowContactForm(false);
-        setEditingContact(null);
-        setSelectedContact(null);
-        
-        // Update sync status
-        setSyncStatus('pending');
-        return;
-      }
-      
-      // If online, proceed normally
       if (editingContact) {
-        // Update existing contact
-        await davClient.updateContact(selectedAddressBook, contactData);
+        // Update existing contact using sync service
+        await sync.updateContact(selectedAddressBook, contactData);
       } else {
-        // Create new contact
-        await davClient.createContact(selectedAddressBook, contactData);
+        // Create new contact using sync service
+        await sync.createContact(selectedAddressBook, contactData);
       }
       
       // Close form and reset state
@@ -736,7 +482,7 @@ function App() {
                 {selectedAddressBook && (
                   <ContactList
                     addressBook={selectedAddressBook}
-                    davClient={davClient}
+                    syncService={syncService}
                     onContactSelect={handleContactSelect}
                     onAddContact={handleAddContact}
                   />
@@ -785,21 +531,25 @@ function App() {
     await errorService.retryOperation(id);
   };
 
-  // Render sync status indicator
-  const renderSyncStatus = () => {
-    if (!isAuthenticated) return null;
-    
-    return (
-      <div className="sync-status">
-        <div className={`sync-icon ${syncStatus}`}></div>
-        <span>
-          {syncStatus === 'synced' && 'All changes saved'}
-          {syncStatus === 'syncing' && 'Syncing...'}
-          {syncStatus === 'pending' && `${pendingOperationCount} changes pending`}
-          {syncStatus === 'error' && 'Sync error'}
-        </span>
-      </div>
-    );
+  // Handle manual sync
+  const handleManualSync = async () => {
+    try {
+      await sync.fullSync({ forceRefresh: true });
+      
+      // Update local state with fresh data
+      const cachedCalendars = CacheService.getCachedCalendars();
+      const cachedAddressBooks = CacheService.getCachedAddressBooks();
+      
+      setCalendars(cachedCalendars);
+      setAddressBooks(cachedAddressBooks);
+      
+      // Refresh current view
+      if (currentDateRange) {
+        await loadEvents(currentDateRange);
+      }
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+    }
   };
 
   return (
@@ -854,7 +604,12 @@ function App() {
         <OfflineIndicator />
         
         {/* Sync status indicator */}
-        {renderSyncStatus()}
+        {isAuthenticated && (
+          <SyncStatusIndicator 
+            syncService={syncService} 
+            onManualSync={handleManualSync}
+          />
+        )}
       </div>
     </Router>
   );

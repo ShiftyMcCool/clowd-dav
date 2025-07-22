@@ -1,0 +1,226 @@
+.sync-status-indicator {
+  position: relative;
+  display: inline-block;
+}
+
+.sync-status-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.sync-status-main:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.sync-status-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sync-status-text {
+  white-space: nowrap;
+}
+
+/* Status-specific styles */
+.sync-status-synced {
+  color: #059669;
+  background-color: #ecfdf5;
+  border-color: #d1fae5;
+}
+
+.sync-status-syncing {
+  color: #0284c7;
+  background-color: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.sync-status-syncing .sync-status-icon {
+  animation: spin 1s linear infinite;
+}
+
+.sync-status-offline {
+  color: #dc2626;
+  background-color: #fef2f2;
+  border-color: #fecaca;
+}
+
+.sync-status-pending {
+  color: #d97706;
+  background-color: #fffbeb;
+  border-color: #fed7aa;
+}
+
+/* Details panel */
+.sync-status-details {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1000;
+  min-width: 280px;
+  margin-top: 0.5rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+}
+
+.sync-status-info {
+  margin-bottom: 1rem;
+}
+
+.sync-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.sync-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.sync-info-label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.sync-info-value {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.sync-info-value.sync-status-synced {
+  color: #059669;
+}
+
+.sync-info-value.sync-status-offline {
+  color: #dc2626;
+}
+
+.sync-info-value.sync-pending {
+  color: #d97706;
+  font-weight: 500;
+}
+
+/* Actions */
+.sync-status-actions {
+  margin-bottom: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.sync-action-button {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.sync-action-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.sync-action-button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Pending operations */
+.sync-pending-operations {
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.sync-pending-operations h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.pending-operations-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pending-operation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.75rem;
+}
+
+.pending-operation-item:last-child {
+  border-bottom: none;
+}
+
+.operation-type {
+  font-weight: 600;
+  color: #374151;
+  text-transform: capitalize;
+  min-width: 50px;
+}
+
+.operation-resource {
+  color: #6b7280;
+  flex: 1;
+  text-align: center;
+}
+
+.operation-time {
+  color: #9ca3af;
+  min-width: 60px;
+  text-align: right;
+}
+
+.operation-more {
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Animations */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .sync-status-details {
+    right: auto;
+    left: 0;
+    min-width: 260px;
+  }
+  
+  .sync-status-main {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+  
+  .sync-status-text {
+    display: none;
+  }
+}
