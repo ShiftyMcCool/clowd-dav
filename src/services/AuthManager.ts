@@ -23,18 +23,27 @@ export class AuthManager implements IAuthManager {
   /**
    * Authenticate with DAV servers using provided credentials
    */
-  async authenticate(config: AuthConfig): Promise<boolean> {
+  async authenticate(config: AuthConfig, provider?: any): Promise<boolean> {
     try {
-      // Detect provider for the server
-      const provider = await ProviderFactory.createProviderForServer(config.caldavUrl);
-      if (!provider) {
-        throw new Error('Unable to detect server type. Please check the server URL.');
+      // Use provided provider or detect one
+      let detectedProvider = provider;
+      if (!detectedProvider) {
+        console.log('AuthManager: Detecting provider for:', config.caldavUrl);
+        detectedProvider = await ProviderFactory.createProviderForServer(config.caldavUrl);
+        if (!detectedProvider) {
+          console.error('AuthManager: No provider found');
+          throw new Error('Unable to detect server type. Please check the server URL.');
+        }
+        console.log('AuthManager: Provider detected:', detectedProvider.name);
+      } else {
+        console.log('AuthManager: Using provided provider:', detectedProvider.name);
       }
 
       // Test CalDAV connection
       const caldavClient = new DAVClient();
       caldavClient.setAuthConfig(config);
-      caldavClient.setProvider(provider);
+      caldavClient.setProvider(detectedProvider);
+      console.log('AuthManager: CalDAV client provider set:', caldavClient.getProvider() !== null);
 
       // Try to discover calendars to test connection
       await caldavClient.discoverCalendars();
@@ -42,7 +51,8 @@ export class AuthManager implements IAuthManager {
       // Test CardDAV connection
       const carddavClient = new DAVClient();
       carddavClient.setAuthConfig(config);
-      carddavClient.setProvider(provider);
+      carddavClient.setProvider(detectedProvider);
+      console.log('AuthManager: CardDAV client provider set:', carddavClient.getProvider() !== null);
 
       // Try to discover address books to test connection
       await carddavClient.discoverAddressBooks();
@@ -132,8 +142,8 @@ export class AuthManager implements IAuthManager {
         };
       }
 
-      // Test authentication
-      const authSuccess = await this.authenticate(config);
+      // Test authentication using the detected provider
+      const authSuccess = await this.authenticate(config, provider);
       
       if (!authSuccess) {
         return {

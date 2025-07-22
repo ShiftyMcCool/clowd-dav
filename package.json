@@ -36,6 +36,7 @@
       "react-app/jest"
     ]
   },
+  "proxy": "https://baikal.it-clowd.top",
   "browserslist": {
     "production": [
       ">0.2%",

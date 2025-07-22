@@ -28,12 +28,18 @@ export class BaikalProvider extends BaseProvider {
       for (const path of testPaths) {
         const testUrl = `${normalizedUrl}${path}`;
         
+        // Convert to proxy URL in development
+        const requestUrl = process.env.NODE_ENV === 'development' 
+          ? new URL(testUrl).pathname 
+          : testUrl;
+        
         try {
-          const response = await fetch(testUrl, {
+          const response = await fetch(requestUrl, {
             method: 'OPTIONS',
             headers: {
               'Content-Type': 'application/xml',
             },
+            mode: 'cors'
           });
 
           // Check for Sabre/DAV server headers (used by Baikal)
@@ -99,6 +105,10 @@ export class BaikalProvider extends BaseProvider {
     if (customizedRequest.method === 'PROPFIND' || customizedRequest.method === 'REPORT') {
       customizedRequest.headers['Content-Type'] = 'application/xml; charset=utf-8';
     }
+
+    // Remove problematic headers for CORS compatibility
+    // The DAV header is often not allowed in CORS preflight responses
+    delete customizedRequest.headers['DAV'];
 
     return customizedRequest;
   }

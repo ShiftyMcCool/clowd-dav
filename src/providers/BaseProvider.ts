@@ -40,7 +40,13 @@ export abstract class BaseProvider implements DAVProvider {
   protected async makeTestRequest(url: string, path: string = ''): Promise<boolean> {
     try {
       const testUrl = `${this.normalizeUrl(url)}${path}`;
-      const response = await fetch(testUrl, {
+      
+      // Convert to proxy URL in development
+      const requestUrl = process.env.NODE_ENV === 'development' 
+        ? new URL(testUrl).pathname 
+        : testUrl;
+      
+      const response = await fetch(requestUrl, {
         method: 'OPTIONS',
         headers: {
           'Content-Type': 'application/xml',

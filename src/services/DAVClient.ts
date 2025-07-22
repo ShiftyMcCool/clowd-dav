@@ -1,79 +1,90 @@
-import { 
-  DAVClient as IDAVClient, 
-  DAVProvider 
-} from '../types/providers';
-import { 
-  AuthConfig 
-} from '../types/auth';
-import { 
-  Calendar, 
-  AddressBook, 
-  CalendarEvent, 
-  Contact, 
-  DateRange, 
-  DAVRequest, 
-  DAVResponse 
-} from '../types/dav';
-import ICAL from 'ical.js';
-const vcardParser = require('vcard-parser');
+import { DAVClient as IDAVClient, DAVProvider } from "../types/providers";
+import { AuthConfig } from "../types/auth";
+import {
+  Calendar,
+  AddressBook,
+  CalendarEvent,
+  Contact,
+  DateRange,
+  DAVRequest,
+  DAVResponse,
+} from "../types/dav";
+import ICAL from "ical.js";
+const vcardParser = require("vcard-parser");
 
 export class DAVClient implements IDAVClient {
   private provider: DAVProvider | null = null;
   private authConfig: AuthConfig | null = null;
 
-
-
   private handleError(response: Response): Error {
     const status = response.status;
-    
+
     switch (status) {
       case 401:
-        return new Error('Authentication failed. Please check your credentials.');
+        return new Error(
+          "Authentication failed. Please check your credentials."
+        );
       case 403:
-        return new Error('Access forbidden. You may not have permission to access this resource.');
+        return new Error(
+          "Access forbidden. You may not have permission to access this resource."
+        );
       case 404:
-        return new Error('Resource not found. Please check the server URL.');
+        return new Error("Resource not found. Please check the server URL.");
       case 500:
-        return new Error('Server error. Please try again later.');
+        return new Error("Server error. Please try again later.");
       default:
         return new Error(`Server error (${status}): ${response.statusText}`);
     }
   }
 
-  private async makeRequest(url: string, options: RequestInit = {}): Promise<DAVResponse> {
+  private async makeRequest(
+    url: string,
+    options: RequestInit = {}
+  ): Promise<DAVResponse> {
     try {
+      // Convert URL for proxy in development
+      const requestUrl = this.convertToProxyUrl(url);
+
       // Prepare headers
       const headers: Record<string, string> = {
-        'Content-Type': 'application/xml; charset=utf-8',
-        'User-Agent': 'CalDAV-CardDAV-Client/1.0',
-        'DAV': '1, 2, 3, calendar-access, addressbook',
-        'Prefer': 'return-minimal',
-        ...options.headers as Record<string, string>
+        "Content-Type": "application/xml; charset=utf-8",
+        "User-Agent": "CalDAV-CardDAV-Client/1.0",
+        Prefer: "return-minimal",
+        ...(options.headers as Record<string, string>),
       };
+
+      // Only add DAV header for non-CORS requests or if explicitly allowed
+      // Many servers don't allow this header in CORS preflight responses
+      if (options.method !== "OPTIONS") {
+        // Skip DAV header for browser CORS compatibility
+        // headers['DAV'] = '1, 2, 3, calendar-access, addressbook';
+      }
 
       // Add authentication if available
       if (this.authConfig) {
-        const credentials = btoa(`${this.authConfig.username}:${this.authConfig.password}`);
-        headers['Authorization'] = `Basic ${credentials}`;
+        const credentials = btoa(
+          `${this.authConfig.username}:${this.authConfig.password}`
+        );
+        headers["Authorization"] = `Basic ${credentials}`;
       }
 
       // Allow provider to customize the request
       if (this.provider?.customizeRequest) {
         const davRequest: DAVRequest = {
-          method: options.method?.toString() || 'GET',
+          method: options.method?.toString() || "GET",
           url,
           headers,
-          data: options.body as string
+          data: options.body as string,
         };
-        
+
         const customizedRequest = this.provider.customizeRequest(davRequest);
         Object.assign(headers, customizedRequest.headers);
         options.body = customizedRequest.data;
       }
 
-      const response = await fetch(url, {
+      const response = await fetch(requestUrl, {
         ...options,
-        headers
+        headers,
       });
 
       if (!response.ok) {
@@ -81,24 +92,27 @@ export class DAVClient implements IDAVClient {
       }
 
       const data = await response.text();
-      
+
       return {
         status: response.status,
         data,
-        headers: Object.fromEntries(response.headers.entries())
+        headers: Object.fromEntries(response.headers.entries()),
       };
     } catch (error) {
       // Re-throw errors that are already properly formatted
-      if (error instanceof Error && (
-        error.message.includes('Authentication failed') ||
-        error.message.includes('Access forbidden') ||
-        error.message.includes('Resource not found') ||
-        error.message.includes('Server error')
-      )) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error"))
+      ) {
         throw error;
       }
       // Handle network errors and other unexpected errors
-      throw new Error('Network error. Please check your connection and server URL.');
+      throw new Error(
+        "Network error. Please check your connection and server URL."
+      );
     }
   }
 
@@ -110,64 +124,112 @@ export class DAVClient implements IDAVClient {
     this.provider = provider;
   }
 
+  public getProvider(): DAVProvider | null {
+    return this.provider;
+  }
+
+  public getAuthConfig(): AuthConfig | null {
+    return this.authConfig;
+  }
+
+  /**
+   * Convert absolute URLs to relative URLs for proxy in development
+   */
+  private convertToProxyUrl(url: string): string {
+    // In development, use proxy by converting to relative URL
+    if (process.env.NODE_ENV === "development") {
+      try {
+        const urlObj = new URL(url);
+        return urlObj.pathname + urlObj.search;
+      } catch (error) {
+        // If URL parsing fails, return as-is
+        return url;
+      }
+    }
+    return url;
+  }
+
   // Basic HTTP methods with DAV headers
-  public async get(url: string, headers?: Record<string, string>): Promise<DAVResponse> {
+  public async get(
+    url: string,
+    headers?: Record<string, string>
+  ): Promise<DAVResponse> {
     return this.makeRequest(url, {
-      method: 'GET',
-      headers
+      method: "GET",
+      headers,
     });
   }
 
-  public async put(url: string, data: string, headers?: Record<string, string>): Promise<DAVResponse> {
+  public async put(
+    url: string,
+    data: string,
+    headers?: Record<string, string>
+  ): Promise<DAVResponse> {
     return this.makeRequest(url, {
-      method: 'PUT',
+      method: "PUT",
       body: data,
-      headers
+      headers,
     });
   }
 
-  public async post(url: string, data: string, headers?: Record<string, string>): Promise<DAVResponse> {
+  public async post(
+    url: string,
+    data: string,
+    headers?: Record<string, string>
+  ): Promise<DAVResponse> {
     return this.makeRequest(url, {
-      method: 'POST',
+      method: "POST",
       body: data,
-      headers
+      headers,
     });
   }
 
-  public async delete(url: string, headers?: Record<string, string>): Promise<DAVResponse> {
+  public async delete(
+    url: string,
+    headers?: Record<string, string>
+  ): Promise<DAVResponse> {
     return this.makeRequest(url, {
-      method: 'DELETE',
-      headers
+      method: "DELETE",
+      headers,
     });
   }
 
   // PROPFIND method for DAV discovery
-  public async propfind(url: string, data: string, depth: string = '1', headers?: Record<string, string>): Promise<DAVResponse> {
+  public async propfind(
+    url: string,
+    data: string,
+    depth: string = "1",
+    headers?: Record<string, string>
+  ): Promise<DAVResponse> {
     const davHeaders = {
-      'Depth': depth,
-      'Content-Type': 'application/xml; charset=utf-8',
-      ...headers
+      Depth: depth,
+      "Content-Type": "application/xml; charset=utf-8",
+      ...headers,
     };
-    
+
     return this.makeRequest(url, {
-      method: 'PROPFIND',
+      method: "PROPFIND",
       body: data,
-      headers: davHeaders
+      headers: davHeaders,
     });
   }
 
   // REPORT method for CalDAV/CardDAV queries
-  public async report(url: string, data: string, headers?: Record<string, string>): Promise<DAVResponse> {
+  public async report(
+    url: string,
+    data: string,
+    headers?: Record<string, string>
+  ): Promise<DAVResponse> {
     const davHeaders = {
-      'Depth': '1',
-      'Content-Type': 'application/xml; charset=utf-8',
-      ...headers
+      Depth: "1",
+      "Content-Type": "application/xml; charset=utf-8",
+      ...headers,
     };
-    
+
     return this.makeRequest(url, {
-      method: 'REPORT',
+      method: "REPORT",
       body: data,
-      headers: davHeaders
+      headers: davHeaders,
     });
   }
 
@@ -177,18 +239,38 @@ export class DAVClient implements IDAVClient {
    */
   public async discoverCalendars(): Promise<Calendar[]> {
     if (!this.provider) {
-      throw new Error('Provider not set. Please set a provider before discovering calendars.');
+      throw new Error(
+        "Provider not set. Please set a provider before discovering calendars."
+      );
     }
-    
+
     if (!this.authConfig) {
-      throw new Error('Authentication not configured. Please set auth config before discovering calendars.');
+      throw new Error(
+        "Authentication not configured. Please set auth config before discovering calendars."
+      );
     }
 
     // Build the calendar discovery URL
-    const baseUrl = this.authConfig.caldavUrl.replace(/\/$/, '');
+    const baseUrl = this.authConfig.caldavUrl.replace(/\/$/, "");
     const discoveryPath = this.provider.getCalendarDiscoveryPath();
     const username = this.authConfig.username;
-    const discoveryUrl = `${baseUrl}${discoveryPath}${username}/`;
+
+    // Check if the baseUrl already contains the discovery path to avoid duplication
+    let discoveryUrl: string;
+    if (baseUrl.includes(discoveryPath.replace(/\/$/, ""))) {
+      // URL already contains the discovery path, just ensure it ends with username
+      if (baseUrl.endsWith(`/${username}`)) {
+        discoveryUrl = `${baseUrl}/`;
+      } else {
+        discoveryUrl = `${baseUrl}/${username}/`;
+      }
+    } else {
+      // Construct the full discovery URL
+      discoveryUrl = `${baseUrl}${discoveryPath}${username}/`;
+    }
+
+    // Convert to relative URL for proxy in development
+    discoveryUrl = this.convertToProxyUrl(discoveryUrl);
 
     // PROPFIND request body to discover calendar collections
     const propfindBody = `<?xml version="1.0" encoding="utf-8" ?>
@@ -203,25 +285,33 @@ export class DAVClient implements IDAVClient {
 </D:propfind>`;
 
     try {
-      const response = await this.propfind(discoveryUrl, propfindBody, '1');
-      return this.parseCalendarDiscoveryResponse(response.data, baseUrl);
+      const response = await this.propfind(discoveryUrl, propfindBody, "1");
+      
+      // Use the server base URL (without the path) for constructing full URLs
+      const serverBaseUrl = new URL(this.authConfig.caldavUrl).origin;
+      const calendars = this.parseCalendarDiscoveryResponse(response.data, serverBaseUrl);
+      return calendars;
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a parsing error, re-throw as is
-        if (error.message.includes('Failed to parse calendar discovery response')) {
+        if (
+          error.message.includes("Failed to parse calendar discovery response")
+        ) {
           throw error;
         }
         // If it's a network/HTTP error, wrap it with context
-        if (error.message.includes('Authentication failed') ||
-            error.message.includes('Access forbidden') ||
-            error.message.includes('Resource not found') ||
-            error.message.includes('Server error') ||
-            error.message.includes('Network error')) {
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
           throw new Error(`Calendar discovery failed: ${error.message}`);
         }
         throw new Error(`Calendar discovery failed: ${error.message}`);
       }
-      throw new Error('Calendar discovery failed: Unknown error');
+      throw new Error("Calendar discovery failed: Unknown error");
     }
   }
 
@@ -231,18 +321,38 @@ export class DAVClient implements IDAVClient {
    */
   public async discoverAddressBooks(): Promise<AddressBook[]> {
     if (!this.provider) {
-      throw new Error('Provider not set. Please set a provider before discovering address books.');
+      throw new Error(
+        "Provider not set. Please set a provider before discovering address books."
+      );
     }
-    
+
     if (!this.authConfig) {
-      throw new Error('Authentication not configured. Please set auth config before discovering address books.');
+      throw new Error(
+        "Authentication not configured. Please set auth config before discovering address books."
+      );
     }
 
     // Build the address book discovery URL
-    const baseUrl = this.authConfig.carddavUrl.replace(/\/$/, '');
+    const baseUrl = this.authConfig.carddavUrl.replace(/\/$/, "");
     const discoveryPath = this.provider.getAddressBookDiscoveryPath();
     const username = this.authConfig.username;
-    const discoveryUrl = `${baseUrl}${discoveryPath}${username}/`;
+
+    // Check if the baseUrl already contains the discovery path to avoid duplication
+    let discoveryUrl: string;
+    if (baseUrl.includes(discoveryPath.replace(/\/$/, ""))) {
+      // URL already contains the discovery path, just ensure it ends with username
+      if (baseUrl.endsWith(`/${username}`)) {
+        discoveryUrl = `${baseUrl}/`;
+      } else {
+        discoveryUrl = `${baseUrl}/${username}/`;
+      }
+    } else {
+      // Construct the full discovery URL
+      discoveryUrl = `${baseUrl}${discoveryPath}${username}/`;
+    }
+
+    // Convert to relative URL for proxy in development
+    discoveryUrl = this.convertToProxyUrl(discoveryUrl);
 
     // PROPFIND request body to discover address book collections
     const propfindBody = `<?xml version="1.0" encoding="utf-8" ?>
@@ -256,25 +366,31 @@ export class DAVClient implements IDAVClient {
 </D:propfind>`;
 
     try {
-      const response = await this.propfind(discoveryUrl, propfindBody, '1');
+      const response = await this.propfind(discoveryUrl, propfindBody, "1");
       return this.parseAddressBookDiscoveryResponse(response.data, baseUrl);
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a parsing error, re-throw as is
-        if (error.message.includes('Failed to parse address book discovery response')) {
+        if (
+          error.message.includes(
+            "Failed to parse address book discovery response"
+          )
+        ) {
           throw error;
         }
         // If it's a network/HTTP error, wrap it with context
-        if (error.message.includes('Authentication failed') ||
-            error.message.includes('Access forbidden') ||
-            error.message.includes('Resource not found') ||
-            error.message.includes('Server error') ||
-            error.message.includes('Network error')) {
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
           throw new Error(`Address book discovery failed: ${error.message}`);
         }
         throw new Error(`Address book discovery failed: ${error.message}`);
       }
-      throw new Error('Address book discovery failed: Unknown error');
+      throw new Error("Address book discovery failed: Unknown error");
     }
   }
 
@@ -282,14 +398,22 @@ export class DAVClient implements IDAVClient {
    * Retrieve calendar events using REPORT requests with date filtering
    * Implements CalDAV calendar-query protocol
    */
-  public async getEvents(calendar: Calendar, dateRange: DateRange): Promise<CalendarEvent[]> {
+  public async getEvents(
+    calendar: Calendar,
+    dateRange: DateRange
+  ): Promise<CalendarEvent[]> {
     if (!this.authConfig) {
-      throw new Error('Authentication not configured. Please set auth config before retrieving events.');
+      throw new Error(
+        "Authentication not configured. Please set auth config before retrieving events."
+      );
     }
 
     // Format dates for CalDAV query (YYYYMMDDTHHMMSSZ format)
     const formatDate = (date: Date): string => {
-      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      return date
+        .toISOString()
+        .replace(/[-:]/g, "")
+        .replace(/\.\d{3}/, "");
     };
 
     const startDate = formatDate(dateRange.start);
@@ -317,20 +441,24 @@ export class DAVClient implements IDAVClient {
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a parsing error, re-throw as is
-        if (error.message.includes('Failed to parse calendar events response')) {
+        if (
+          error.message.includes("Failed to parse calendar events response")
+        ) {
           throw error;
         }
         // If it's a network/HTTP error, wrap it with context
-        if (error.message.includes('Authentication failed') ||
-            error.message.includes('Access forbidden') ||
-            error.message.includes('Resource not found') ||
-            error.message.includes('Server error') ||
-            error.message.includes('Network error')) {
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
           throw new Error(`Event retrieval failed: ${error.message}`);
         }
         throw new Error(`Event retrieval failed: ${error.message}`);
       }
-      throw new Error('Event retrieval failed: Unknown error');
+      throw new Error("Event retrieval failed: Unknown error");
     }
   }
 
@@ -340,7 +468,9 @@ export class DAVClient implements IDAVClient {
    */
   public async getContacts(addressBook: AddressBook): Promise<Contact[]> {
     if (!this.authConfig) {
-      throw new Error('Authentication not configured. Please set auth config before retrieving contacts.');
+      throw new Error(
+        "Authentication not configured. Please set auth config before retrieving contacts."
+      );
     }
 
     // REPORT request body for address book query
@@ -361,20 +491,22 @@ export class DAVClient implements IDAVClient {
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a parsing error, re-throw as is
-        if (error.message.includes('Failed to parse contacts response')) {
+        if (error.message.includes("Failed to parse contacts response")) {
           throw error;
         }
         // If it's a network/HTTP error, wrap it with context
-        if (error.message.includes('Authentication failed') ||
-            error.message.includes('Access forbidden') ||
-            error.message.includes('Resource not found') ||
-            error.message.includes('Server error') ||
-            error.message.includes('Network error')) {
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
           throw new Error(`Contact retrieval failed: ${error.message}`);
         }
         throw new Error(`Contact retrieval failed: ${error.message}`);
       }
-      throw new Error('Contact retrieval failed: Unknown error');
+      throw new Error("Contact retrieval failed: Unknown error");
     }
   }
 
@@ -382,23 +514,28 @@ export class DAVClient implements IDAVClient {
    * Create a new calendar event using PUT request with iCalendar data
    * Implements CalDAV event creation protocol
    */
-  public async createEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
+  public async createEvent(
+    calendar: Calendar,
+    event: CalendarEvent
+  ): Promise<void> {
     if (!this.authConfig) {
-      throw new Error('Authentication not configured. Please set auth config before creating events.');
+      throw new Error(
+        "Authentication not configured. Please set auth config before creating events."
+      );
     }
 
     // Generate unique URL for the new event
     const eventUrl = this.generateEventUrl(calendar, event);
-    
+
     // Generate iCalendar data
     const icalData = this.generateICalendarData(event);
-    
+
     try {
       // PUT request to create the event
       const response = await this.put(eventUrl, icalData, {
-        'Content-Type': 'text/calendar; charset=utf-8'
+        "Content-Type": "text/calendar; charset=utf-8",
       });
-      
+
       // Check if creation was successful (201 Created or 204 No Content)
       if (response.status !== 201 && response.status !== 204) {
         throw new Error(`Event creation failed with status ${response.status}`);
@@ -406,16 +543,18 @@ export class DAVClient implements IDAVClient {
     } catch (error) {
       if (error instanceof Error) {
         // If it's a network/HTTP error, wrap it with context
-        if (error.message.includes('Authentication failed') ||
-            error.message.includes('Access forbidden') ||
-            error.message.includes('Resource not found') ||
-            error.message.includes('Server error') ||
-            error.message.includes('Network error')) {
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
           throw new Error(`Event creation failed: ${error.message}`);
         }
         throw new Error(`Event creation failed: ${error.message}`);
       }
-      throw new Error('Event creation failed: Unknown error');
+      throw new Error("Event creation failed: Unknown error");
     }
   }
 
@@ -423,56 +562,69 @@ export class DAVClient implements IDAVClient {
    * Update an existing calendar event using PUT request with ETag handling
    * Implements CalDAV event update protocol with conflict detection
    */
-  public async updateEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
+  public async updateEvent(
+    calendar: Calendar,
+    event: CalendarEvent
+  ): Promise<void> {
     if (!this.authConfig) {
-      throw new Error('Authentication not configured. Please set auth config before updating events.');
+      throw new Error(
+        "Authentication not configured. Please set auth config before updating events."
+      );
     }
 
     if (!event.etag) {
-      throw new Error('Event ETag is required for updates to detect conflicts.');
+      throw new Error(
+        "Event ETag is required for updates to detect conflicts."
+      );
     }
 
     // Generate event URL (should be the same as the original)
     const eventUrl = this.generateEventUrl(calendar, event);
-    
+
     // Generate updated iCalendar data
     const icalData = this.generateICalendarData(event);
-    
+
     try {
       // PUT request with If-Match header for conflict detection
       const response = await this.put(eventUrl, icalData, {
-        'Content-Type': 'text/calendar; charset=utf-8',
-        'If-Match': `"${event.etag}"`
+        "Content-Type": "text/calendar; charset=utf-8",
+        "If-Match": `"${event.etag}"`,
       });
-      
+
       // Check if update was successful (200 OK or 204 No Content)
       if (response.status !== 200 && response.status !== 204) {
         if (response.status === 412) {
-          throw new Error('Event update conflict: The event has been modified by another client. Please refresh and try again.');
+          throw new Error(
+            "Event update conflict: The event has been modified by another client. Please refresh and try again."
+          );
         }
         throw new Error(`Event update failed with status ${response.status}`);
       }
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a conflict error, re-throw as is
-        if (error.message.includes('Event update conflict')) {
+        if (error.message.includes("Event update conflict")) {
           throw error;
         }
         // Handle 412 Precondition Failed specifically
-        if (error.message.includes('Server error (412)')) {
-          throw new Error('Event update conflict: The event has been modified by another client. Please refresh and try again.');
+        if (error.message.includes("Server error (412)")) {
+          throw new Error(
+            "Event update conflict: The event has been modified by another client. Please refresh and try again."
+          );
         }
         // If it's a network/HTTP error, wrap it with context
-        if (error.message.includes('Authentication failed') ||
-            error.message.includes('Access forbidden') ||
-            error.message.includes('Resource not found') ||
-            error.message.includes('Server error') ||
-            error.message.includes('Network error')) {
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
           throw new Error(`Event update failed: ${error.message}`);
         }
         throw new Error(`Event update failed: ${error.message}`);
       }
-      throw new Error('Event update failed: Unknown error');
+      throw new Error("Event update failed: Unknown error");
     }
   }
 
@@ -480,40 +632,49 @@ export class DAVClient implements IDAVClient {
    * Create a new contact using PUT request with vCard data
    * Implements CardDAV contact creation protocol
    */
-  public async createContact(addressBook: AddressBook, contact: Contact): Promise<void> {
+  public async createContact(
+    addressBook: AddressBook,
+    contact: Contact
+  ): Promise<void> {
     if (!this.authConfig) {
-      throw new Error('Authentication not configured. Please set auth config before creating contacts.');
+      throw new Error(
+        "Authentication not configured. Please set auth config before creating contacts."
+      );
     }
 
     // Generate unique URL for the new contact
     const contactUrl = this.generateContactUrl(addressBook, contact);
-    
+
     // Generate vCard data
     const vcardData = this.generateVCardData(contact);
-    
+
     try {
       // PUT request to create the contact
       const response = await this.put(contactUrl, vcardData, {
-        'Content-Type': 'text/vcard; charset=utf-8'
+        "Content-Type": "text/vcard; charset=utf-8",
       });
-      
+
       // Check if creation was successful (201 Created or 204 No Content)
       if (response.status !== 201 && response.status !== 204) {
-        throw new Error(`Contact creation failed with status ${response.status}`);
+        throw new Error(
+          `Contact creation failed with status ${response.status}`
+        );
       }
     } catch (error) {
       if (error instanceof Error) {
         // If it's a network/HTTP error, wrap it with context
-        if (error.message.includes('Authentication failed') ||
-            error.message.includes('Access forbidden') ||
-            error.message.includes('Resource not found') ||
-            error.message.includes('Server error') ||
-            error.message.includes('Network error')) {
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
           throw new Error(`Contact creation failed: ${error.message}`);
         }
         throw new Error(`Contact creation failed: ${error.message}`);
       }
-      throw new Error('Contact creation failed: Unknown error');
+      throw new Error("Contact creation failed: Unknown error");
     }
   }
 
@@ -521,111 +682,145 @@ export class DAVClient implements IDAVClient {
    * Update an existing contact using PUT request with ETag handling
    * Implements CardDAV contact update protocol with conflict detection
    */
-  public async updateContact(addressBook: AddressBook, contact: Contact): Promise<void> {
+  public async updateContact(
+    addressBook: AddressBook,
+    contact: Contact
+  ): Promise<void> {
     if (!this.authConfig) {
-      throw new Error('Authentication not configured. Please set auth config before updating contacts.');
+      throw new Error(
+        "Authentication not configured. Please set auth config before updating contacts."
+      );
     }
 
     if (!contact.etag) {
-      throw new Error('Contact ETag is required for updates to detect conflicts.');
+      throw new Error(
+        "Contact ETag is required for updates to detect conflicts."
+      );
     }
 
     // Generate contact URL (should be the same as the original)
     const contactUrl = this.generateContactUrl(addressBook, contact);
-    
+
     // Generate updated vCard data
     const vcardData = this.generateVCardData(contact);
-    
+
     try {
       // PUT request with If-Match header for conflict detection
       const response = await this.put(contactUrl, vcardData, {
-        'Content-Type': 'text/vcard; charset=utf-8',
-        'If-Match': `"${contact.etag}"`
+        "Content-Type": "text/vcard; charset=utf-8",
+        "If-Match": `"${contact.etag}"`,
       });
-      
+
       // Check if update was successful (200 OK or 204 No Content)
       if (response.status !== 200 && response.status !== 204) {
         if (response.status === 412) {
-          throw new Error('Contact update conflict: The contact has been modified by another client. Please refresh and try again.');
+          throw new Error(
+            "Contact update conflict: The contact has been modified by another client. Please refresh and try again."
+          );
         }
         throw new Error(`Contact update failed with status ${response.status}`);
       }
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a conflict error, re-throw as is
-        if (error.message.includes('Contact update conflict')) {
+        if (error.message.includes("Contact update conflict")) {
           throw error;
         }
         // Handle 412 Precondition Failed specifically
-        if (error.message.includes('Server error (412)')) {
-          throw new Error('Contact update conflict: The contact has been modified by another client. Please refresh and try again.');
+        if (error.message.includes("Server error (412)")) {
+          throw new Error(
+            "Contact update conflict: The contact has been modified by another client. Please refresh and try again."
+          );
         }
         // If it's a network/HTTP error, wrap it with context
-        if (error.message.includes('Authentication failed') ||
-            error.message.includes('Access forbidden') ||
-            error.message.includes('Resource not found') ||
-            error.message.includes('Server error') ||
-            error.message.includes('Network error')) {
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
           throw new Error(`Contact update failed: ${error.message}`);
         }
         throw new Error(`Contact update failed: ${error.message}`);
       }
-      throw new Error('Contact update failed: Unknown error');
+      throw new Error("Contact update failed: Unknown error");
     }
   }
 
   /**
    * Parse PROPFIND response to extract calendar information
    */
-  private parseCalendarDiscoveryResponse(xmlData: string, baseUrl: string): Calendar[] {
+  private parseCalendarDiscoveryResponse(
+    xmlData: string,
+    baseUrl: string
+  ): Calendar[] {
     const calendars: Calendar[] = [];
-    
+
     try {
       // Parse XML response using DOMParser
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlData, 'text/xml');
-      
+      const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+
       // Find all response elements
-      const responses = xmlDoc.getElementsByTagNameNS('DAV:', 'response');
-      
+      const responses = xmlDoc.getElementsByTagNameNS("DAV:", "response");
+
       for (let i = 0; i < responses.length; i++) {
         const response = responses[i];
-        
+
         // Get the href (URL) of the resource
-        const hrefElement = response.getElementsByTagNameNS('DAV:', 'href')[0];
+        const hrefElement = response.getElementsByTagNameNS("DAV:", "href")[0];
         if (!hrefElement) continue;
-        
+
         const href = hrefElement.textContent?.trim();
         if (!href) continue;
-        
+
         // Check if this is a calendar collection
-        const resourceTypeElement = response.getElementsByTagNameNS('DAV:', 'resourcetype')[0];
+        const resourceTypeElement = response.getElementsByTagNameNS(
+          "DAV:",
+          "resourcetype"
+        )[0];
         if (!resourceTypeElement) continue;
-        
-        const isCalendar = resourceTypeElement.getElementsByTagNameNS('urn:ietf:params:xml:ns:caldav', 'calendar').length > 0;
+
+        const isCalendar =
+          resourceTypeElement.getElementsByTagNameNS(
+            "urn:ietf:params:xml:ns:caldav",
+            "calendar"
+          ).length > 0;
         if (!isCalendar) continue;
-        
+
         // Get display name
-        const displayNameElement = response.getElementsByTagNameNS('DAV:', 'displayname')[0];
-        const displayName = displayNameElement?.textContent?.trim() || 'Unnamed Calendar';
-        
+        const displayNameElement = response.getElementsByTagNameNS(
+          "DAV:",
+          "displayname"
+        )[0];
+        const displayName =
+          displayNameElement?.textContent?.trim() || "Unnamed Calendar";
+
         // Get calendar color if available
-        const colorElement = response.getElementsByTagNameNS('urn:ietf:params:xml:ns:caldav', 'calendar-color')[0];
+        const colorElement = response.getElementsByTagNameNS(
+          "urn:ietf:params:xml:ns:caldav",
+          "calendar-color"
+        )[0];
         const color = colorElement?.textContent?.trim();
-        
+
         // Build full URL
-        const fullUrl = href.startsWith('http') ? href : `${baseUrl}${href}`;
-        
+        const fullUrl = href.startsWith("http") ? href : `${baseUrl}${href}`;
+
         calendars.push({
           url: fullUrl,
           displayName,
-          color
+          color,
         });
       }
-      
+
       return calendars;
     } catch (error) {
-      throw new Error(`Failed to parse calendar discovery response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to parse calendar discovery response: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
@@ -634,112 +829,142 @@ export class DAVClient implements IDAVClient {
    */
   private parseCalendarEventsResponse(xmlData: string): CalendarEvent[] {
     const events: CalendarEvent[] = [];
-    
+
     try {
       // Parse XML response using DOMParser
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlData, 'text/xml');
-      
+      const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+
       // Find all response elements
-      const responses = xmlDoc.getElementsByTagNameNS('DAV:', 'response');
-      
+      const responses = xmlDoc.getElementsByTagNameNS("DAV:", "response");
+
       for (let i = 0; i < responses.length; i++) {
         const response = responses[i];
-        
+
         // Get ETag for conflict detection
-        const etagElement = response.getElementsByTagNameNS('DAV:', 'getetag')[0];
-        const etag = etagElement?.textContent?.trim().replace(/"/g, '');
-        
+        const etagElement = response.getElementsByTagNameNS(
+          "DAV:",
+          "getetag"
+        )[0];
+        const etag = etagElement?.textContent?.trim().replace(/"/g, "");
+
         // Get calendar data
-        const calendarDataElement = response.getElementsByTagNameNS('urn:ietf:params:xml:ns:caldav', 'calendar-data')[0];
+        const calendarDataElement = response.getElementsByTagNameNS(
+          "urn:ietf:params:xml:ns:caldav",
+          "calendar-data"
+        )[0];
         if (!calendarDataElement) continue;
-        
+
         const icalData = calendarDataElement.textContent?.trim();
         if (!icalData) continue;
-        
+
         try {
           // Parse iCalendar data using ICAL.js
           const jcalData = ICAL.parse(icalData);
           const comp = new ICAL.Component(jcalData);
-          
+
           // Find VEVENT components
-          const vevents = comp.getAllSubcomponents('vevent');
-          
+          const vevents = comp.getAllSubcomponents("vevent");
+
           for (const vevent of vevents) {
             const event = new ICAL.Event(vevent);
-            
+
             // Extract event properties
             const calendarEvent: CalendarEvent = {
-              uid: event.uid || '',
-              summary: event.summary || '',
+              uid: event.uid || "",
+              summary: event.summary || "",
               description: event.description || undefined,
-              dtstart: event.startDate ? event.startDate.toJSDate() : new Date(),
+              dtstart: event.startDate
+                ? event.startDate.toJSDate()
+                : new Date(),
               dtend: event.endDate ? event.endDate.toJSDate() : new Date(),
               location: event.location || undefined,
-              etag
+              etag,
             };
-            
+
             events.push(calendarEvent);
           }
         } catch (icalError) {
-          console.warn('Failed to parse iCalendar data:', icalError);
+          console.warn("Failed to parse iCalendar data:", icalError);
           // Continue processing other events
         }
       }
-      
+
       return events;
     } catch (error) {
-      throw new Error(`Failed to parse calendar events response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to parse calendar events response: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
   /**
    * Parse PROPFIND response to extract address book information
    */
-  private parseAddressBookDiscoveryResponse(xmlData: string, baseUrl: string): AddressBook[] {
+  private parseAddressBookDiscoveryResponse(
+    xmlData: string,
+    baseUrl: string
+  ): AddressBook[] {
     const addressBooks: AddressBook[] = [];
-    
+
     try {
       // Parse XML response using DOMParser
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlData, 'text/xml');
-      
+      const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+
       // Find all response elements
-      const responses = xmlDoc.getElementsByTagNameNS('DAV:', 'response');
-      
+      const responses = xmlDoc.getElementsByTagNameNS("DAV:", "response");
+
       for (let i = 0; i < responses.length; i++) {
         const response = responses[i];
-        
+
         // Get the href (URL) of the resource
-        const hrefElement = response.getElementsByTagNameNS('DAV:', 'href')[0];
+        const hrefElement = response.getElementsByTagNameNS("DAV:", "href")[0];
         if (!hrefElement) continue;
-        
+
         const href = hrefElement.textContent?.trim();
         if (!href) continue;
-        
+
         // Check if this is an address book collection
-        const resourceTypeElement = response.getElementsByTagNameNS('DAV:', 'resourcetype')[0];
+        const resourceTypeElement = response.getElementsByTagNameNS(
+          "DAV:",
+          "resourcetype"
+        )[0];
         if (!resourceTypeElement) continue;
-        
-        const isAddressBook = resourceTypeElement.getElementsByTagNameNS('urn:ietf:params:xml:ns:carddav', 'addressbook').length > 0;
+
+        const isAddressBook =
+          resourceTypeElement.getElementsByTagNameNS(
+            "urn:ietf:params:xml:ns:carddav",
+            "addressbook"
+          ).length > 0;
         if (!isAddressBook) continue;
-        
+
         // Get display name
-        const displayNameElement = response.getElementsByTagNameNS('DAV:', 'displayname')[0];
-        const displayName = displayNameElement?.textContent?.trim() || 'Unnamed Address Book';
-        
+        const displayNameElement = response.getElementsByTagNameNS(
+          "DAV:",
+          "displayname"
+        )[0];
+        const displayName =
+          displayNameElement?.textContent?.trim() || "Unnamed Address Book";
+
         // Build full URL
-        const fullUrl = href.startsWith('http') ? href : `${baseUrl}${href}`;
-        
+        const fullUrl = href.startsWith("http") ? href : `${baseUrl}${href}`;
+
         addressBooks.push({
           url: fullUrl,
-          displayName
+          displayName,
         });
       }
-      
+
       return addressBooks;
     } catch (error) {
-      throw new Error(`Failed to parse address book discovery response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to parse address book discovery response: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
@@ -748,60 +973,73 @@ export class DAVClient implements IDAVClient {
    */
   private parseContactsResponse(xmlData: string): Contact[] {
     const contacts: Contact[] = [];
-    
+
     try {
       // Parse XML response using DOMParser
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlData, 'text/xml');
-      
+      const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+
       // Find all response elements
-      const responses = xmlDoc.getElementsByTagNameNS('DAV:', 'response');
-      
+      const responses = xmlDoc.getElementsByTagNameNS("DAV:", "response");
+
       for (let i = 0; i < responses.length; i++) {
         const response = responses[i];
-        
+
         // Get ETag for conflict detection
-        const etagElement = response.getElementsByTagNameNS('DAV:', 'getetag')[0];
-        const etag = etagElement?.textContent?.trim().replace(/"/g, '');
-        
+        const etagElement = response.getElementsByTagNameNS(
+          "DAV:",
+          "getetag"
+        )[0];
+        const etag = etagElement?.textContent?.trim().replace(/"/g, "");
+
         // Get address data
-        const addressDataElement = response.getElementsByTagNameNS('urn:ietf:params:xml:ns:carddav', 'address-data')[0];
+        const addressDataElement = response.getElementsByTagNameNS(
+          "urn:ietf:params:xml:ns:carddav",
+          "address-data"
+        )[0];
         if (!addressDataElement) continue;
-        
+
         const vcardData = addressDataElement.textContent?.trim();
         if (!vcardData) continue;
-        
+
         try {
           // Parse vCard data using vcard-parser library
           const vcard = vcardParser.parse(vcardData);
-          
+
           // Extract contact properties
           const contact: Contact = {
-            uid: this.getVCardProperty(vcard, 'uid') || '',
-            fn: this.getVCardProperty(vcard, 'fn') || 'Unnamed Contact',
-            email: this.getVCardPropertyArray(vcard, 'email'),
-            tel: this.getVCardPropertyArray(vcard, 'tel'),
-            org: this.getVCardProperty(vcard, 'org'),
-            etag
+            uid: this.getVCardProperty(vcard, "uid") || "",
+            fn: this.getVCardProperty(vcard, "fn") || "Unnamed Contact",
+            email: this.getVCardPropertyArray(vcard, "email"),
+            tel: this.getVCardPropertyArray(vcard, "tel"),
+            org: this.getVCardProperty(vcard, "org"),
+            etag,
           };
-          
+
           contacts.push(contact);
         } catch (vcardError) {
-          console.warn('Failed to parse vCard data:', vcardError);
+          console.warn("Failed to parse vCard data:", vcardError);
           // Continue processing other contacts
         }
       }
-      
+
       return contacts;
     } catch (error) {
-      throw new Error(`Failed to parse contacts response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to parse contacts response: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
   /**
    * Helper method to extract a single property value from vCard
    */
-  private getVCardProperty(vcard: any, propertyName: string): string | undefined {
+  private getVCardProperty(
+    vcard: any,
+    propertyName: string
+  ): string | undefined {
     try {
       const property = vcard[propertyName.toLowerCase()];
       if (property && Array.isArray(property) && property.length > 0) {
@@ -816,11 +1054,16 @@ export class DAVClient implements IDAVClient {
   /**
    * Helper method to extract multiple property values from vCard as an array
    */
-  private getVCardPropertyArray(vcard: any, propertyName: string): string[] | undefined {
+  private getVCardPropertyArray(
+    vcard: any,
+    propertyName: string
+  ): string[] | undefined {
     try {
       const properties = vcard[propertyName.toLowerCase()];
       if (properties && Array.isArray(properties)) {
-        const values = properties.map(prop => prop.value).filter(val => val);
+        const values = properties
+          .map((prop) => prop.value)
+          .filter((val) => val);
         return values.length > 0 ? values : undefined;
       }
     } catch (error) {
@@ -835,11 +1078,13 @@ export class DAVClient implements IDAVClient {
    */
   private generateEventUrl(calendar: Calendar, event: CalendarEvent): string {
     // Ensure calendar URL ends with /
-    const calendarUrl = calendar.url.endsWith('/') ? calendar.url : `${calendar.url}/`;
-    
+    const calendarUrl = calendar.url.endsWith("/")
+      ? calendar.url
+      : `${calendar.url}/`;
+
     // Generate filename from UID, ensuring it's URL-safe
     const filename = `${event.uid}.ics`;
-    
+
     return `${calendarUrl}${filename}`;
   }
 
@@ -850,7 +1095,10 @@ export class DAVClient implements IDAVClient {
     try {
       // Format dates to iCalendar format (YYYYMMDDTHHMMSSZ)
       const formatDate = (date: Date): string => {
-        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+        return date
+          .toISOString()
+          .replace(/[-:]/g, "")
+          .replace(/\.\d{3}/, "");
       };
 
       const now = new Date();
@@ -861,33 +1109,39 @@ export class DAVClient implements IDAVClient {
       const lastModified = formatDate(now);
 
       // Build iCalendar string manually for reliability
-      let icalData = 'BEGIN:VCALENDAR\r\n';
-      icalData += 'VERSION:2.0\r\n';
-      icalData += 'PRODID:-//CalDAV-CardDAV-Client//EN\r\n';
-      icalData += 'CALSCALE:GREGORIAN\r\n';
-      icalData += 'BEGIN:VEVENT\r\n';
+      let icalData = "BEGIN:VCALENDAR\r\n";
+      icalData += "VERSION:2.0\r\n";
+      icalData += "PRODID:-//CalDAV-CardDAV-Client//EN\r\n";
+      icalData += "CALSCALE:GREGORIAN\r\n";
+      icalData += "BEGIN:VEVENT\r\n";
       icalData += `UID:${event.uid}\r\n`;
       icalData += `SUMMARY:${this.escapeICalValue(event.summary)}\r\n`;
-      
+
       if (event.description) {
-        icalData += `DESCRIPTION:${this.escapeICalValue(event.description)}\r\n`;
+        icalData += `DESCRIPTION:${this.escapeICalValue(
+          event.description
+        )}\r\n`;
       }
-      
+
       if (event.location) {
         icalData += `LOCATION:${this.escapeICalValue(event.location)}\r\n`;
       }
-      
+
       icalData += `DTSTART:${dtstart}\r\n`;
       icalData += `DTEND:${dtend}\r\n`;
       icalData += `DTSTAMP:${dtstamp}\r\n`;
       icalData += `CREATED:${created}\r\n`;
       icalData += `LAST-MODIFIED:${lastModified}\r\n`;
-      icalData += 'END:VEVENT\r\n';
-      icalData += 'END:VCALENDAR\r\n';
+      icalData += "END:VEVENT\r\n";
+      icalData += "END:VCALENDAR\r\n";
 
       return icalData;
     } catch (error) {
-      throw new Error(`Failed to generate iCalendar data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to generate iCalendar data: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
@@ -896,24 +1150,29 @@ export class DAVClient implements IDAVClient {
    */
   private escapeICalValue(value: string): string {
     return value
-      .replace(/\\/g, '\\\\')  // Escape backslashes
-      .replace(/;/g, '\\;')    // Escape semicolons
-      .replace(/,/g, '\\,')    // Escape commas
-      .replace(/\n/g, '\\n')   // Escape newlines
-      .replace(/\r/g, '');     // Remove carriage returns
+      .replace(/\\/g, "\\\\") // Escape backslashes
+      .replace(/;/g, "\\;") // Escape semicolons
+      .replace(/,/g, "\\,") // Escape commas
+      .replace(/\n/g, "\\n") // Escape newlines
+      .replace(/\r/g, ""); // Remove carriage returns
   }
 
   /**
    * Generate a unique URL for a contact
    * Uses the contact UID to create a consistent URL
    */
-  private generateContactUrl(addressBook: AddressBook, contact: Contact): string {
+  private generateContactUrl(
+    addressBook: AddressBook,
+    contact: Contact
+  ): string {
     // Ensure address book URL ends with /
-    const addressBookUrl = addressBook.url.endsWith('/') ? addressBook.url : `${addressBook.url}/`;
-    
+    const addressBookUrl = addressBook.url.endsWith("/")
+      ? addressBook.url
+      : `${addressBook.url}/`;
+
     // Generate filename from UID, ensuring it's URL-safe
     const filename = `${contact.uid}.vcf`;
-    
+
     return `${addressBookUrl}${filename}`;
   }
 
@@ -923,35 +1182,39 @@ export class DAVClient implements IDAVClient {
   private generateVCardData(contact: Contact): string {
     try {
       // Build vCard string manually for reliability
-      let vcardData = 'BEGIN:VCARD\r\n';
-      vcardData += 'VERSION:3.0\r\n';
+      let vcardData = "BEGIN:VCARD\r\n";
+      vcardData += "VERSION:3.0\r\n";
       vcardData += `UID:${contact.uid}\r\n`;
       vcardData += `FN:${this.escapeVCardValue(contact.fn)}\r\n`;
-      
+
       // Add email addresses
       if (contact.email && contact.email.length > 0) {
         for (const email of contact.email) {
           vcardData += `EMAIL:${this.escapeVCardValue(email)}\r\n`;
         }
       }
-      
+
       // Add phone numbers
       if (contact.tel && contact.tel.length > 0) {
         for (const tel of contact.tel) {
           vcardData += `TEL:${this.escapeVCardValue(tel)}\r\n`;
         }
       }
-      
+
       // Add organization
       if (contact.org) {
         vcardData += `ORG:${this.escapeVCardValue(contact.org)}\r\n`;
       }
-      
-      vcardData += 'END:VCARD\r\n';
+
+      vcardData += "END:VCARD\r\n";
 
       return vcardData;
     } catch (error) {
-      throw new Error(`Failed to generate vCard data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to generate vCard data: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
@@ -960,10 +1223,10 @@ export class DAVClient implements IDAVClient {
    */
   private escapeVCardValue(value: string): string {
     return value
-      .replace(/\\/g, '\\\\')  // Escape backslashes
-      .replace(/;/g, '\\;')    // Escape semicolons
-      .replace(/,/g, '\\,')    // Escape commas
-      .replace(/\n/g, '\\n')   // Escape newlines
-      .replace(/\r/g, '');     // Remove carriage returns
+      .replace(/\\/g, "\\\\") // Escape backslashes
+      .replace(/;/g, "\\;") // Escape semicolons
+      .replace(/,/g, "\\,") // Escape commas
+      .replace(/\n/g, "\\n") // Escape newlines
+      .replace(/\r/g, ""); // Remove carriage returns
   }
 }

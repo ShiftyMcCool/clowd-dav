@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { SetupForm } from './components/SetupForm';
 import { CalendarView } from './components/Calendar/CalendarView';
@@ -45,6 +45,7 @@ function App() {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [selectedCalendar, setSelectedCalendar] = useState<Calendar | null>(null);
   const [currentDateRange, setCurrentDateRange] = useState<DateRange | null>(null);
+  const [calendarCurrentDate, setCalendarCurrentDate] = useState<Date>(new Date());
   
   // Contact state
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
@@ -56,13 +57,16 @@ function App() {
   
   // Error handling and offline state
   const [errors, setErrors] = useState<ErrorMessageType[]>([]);
-
-  const authManager = AuthManager.getInstance();
-  const davClient = new DAVClient();
-  const errorService = ErrorHandlingService.getInstance();
-  const networkService = NetworkService.getInstance();
   
-  // Initialize sync service
+  // Track the last date range to prevent duplicate calls
+  const lastDateRangeRef = useRef<DateRange | null>(null);
+
+  const [authManager] = useState(() => AuthManager.getInstance());
+  const [errorService] = useState(() => ErrorHandlingService.getInstance());
+  const [networkService] = useState(() => NetworkService.getInstance());
+  
+  // Initialize DAV client and sync service - will be configured when authenticated
+  const [davClient] = useState(() => new DAVClient());
   const [syncService] = useState(() => new SyncService(davClient));
   const sync = useSync(syncService);
 
@@ -75,17 +79,9 @@ function App() {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [errorService]);
 
-  // Initialize sync service when authenticated
-  useEffect(() => {
-    if (isAuthenticated && currentConfig) {
-      // Perform initial sync
-      sync.fullSync().catch(error => {
-        console.error('Initial sync failed:', error);
-      });
-    }
-  }, [isAuthenticated, currentConfig, sync]);
+  // Note: Initial sync is handled in handleSetupComplete after provider setup
 
   useEffect(() => {
     // Check if user has stored credentials and try to load them
@@ -117,7 +113,7 @@ function App() {
     
     // Set up provider
     try {
-      const provider = await ProviderFactory.createProvider(config.caldavUrl);
+      const provider = await ProviderFactory.createProviderForServer(config.caldavUrl);
       if (provider) {
         davClient.setProvider(provider);
         
@@ -133,6 +129,7 @@ function App() {
 
   const loadCalendarsAndAddressBooks = async () => {
     try {
+      
       await sync.syncCalendars();
       await sync.syncAddressBooks();
       
@@ -140,7 +137,9 @@ function App() {
       const cachedCalendars = CacheService.getCachedCalendars();
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
       
+      console.log('Setting calendars:', cachedCalendars.length);
       setCalendars(cachedCalendars);
+      console.log('Setting address books:', cachedAddressBooks.length);
       setAddressBooks(cachedAddressBooks);
       
       // Select first address book by default
@@ -155,8 +154,11 @@ function App() {
 
 
 
-  const loadEvents = async (dateRange: DateRange) => {
-    if (calendars.length === 0) return;
+  const loadEvents = useCallback(async (dateRange: DateRange) => {
+    if (calendars.length === 0) {
+      console.log('No calendars available, skipping event loading');
+      return;
+    }
     
     try {
       setCalendarLoading(true);
@@ -176,15 +178,9 @@ function App() {
       }
       
       if (failedCalendars.length > 0) {
-        // Create retry function for failed calendars
-        const retryAction = async () => {
-          await loadEvents(dateRange);
-        };
-        
         errorService.reportError(
           `Failed to load events from ${failedCalendars.join(', ')}.`,
-          'warning',
-          retryAction
+          'warning'
         );
       }
       
@@ -192,26 +188,36 @@ function App() {
     } catch (error) {
       console.error('Error loading events:', error);
       
-      // Create retry function
-      const retryAction = async () => {
-        await loadEvents(dateRange);
-      };
-      
-      // Report error with retry option
+      // Report error without retry to avoid circular dependency
       errorService.reportError(
         `Failed to load events: ${errorService.formatErrorMessage(error)}`,
-        'error',
-        retryAction
+        'error'
       );
     } finally {
       setCalendarLoading(false);
     }
-  };
+  }, [calendars, sync, errorService]);
 
-  const handleDateRangeChange = (dateRange: DateRange) => {
+  const handleDateRangeChange = useCallback((dateRange: DateRange) => {
+    // Check if this is the same date range as the last call
+    const lastDateRange = lastDateRangeRef.current;
+    if (lastDateRange && 
+        dateRange.start.getTime() === lastDateRange.start.getTime() &&
+        dateRange.end.getTime() === lastDateRange.end.getTime()) {
+      console.log('Date range unchanged, skipping');
+      return;
+    }
+    
+    // Update the last date range
+    lastDateRangeRef.current = {
+      start: new Date(dateRange.start),
+      end: new Date(dateRange.end)
+    };
+    
+    console.log('Date range changed:', dateRange);
     setCurrentDateRange(dateRange);
     loadEvents(dateRange);
-  };
+  }, [loadEvents]);
 
   const handleEventClick = (event: CalendarEvent) => {
     setEditingEvent(event);
@@ -407,39 +413,44 @@ function App() {
     return <SetupForm onSetupComplete={handleSetup} />;
   };
 
-  // Calendar component
-  const CalendarComponent = () => {
-    useEffect(() => {
-      setCurrentView('calendar');
-    }, []);
-    
-    return (
-      <div className="view-container">
-        {calendarLoading && <LoadingIndicator overlay text="Loading calendar data..." />}
-        <CalendarView
-          calendars={calendars}
-          events={events}
-          onDateRangeChange={handleDateRangeChange}
-          onEventClick={handleEventClick}
-          onCreateEvent={handleCreateEvent}
-          loading={calendarLoading}
-        />
-        
-        {/* Event Form Modal */}
-        {showEventForm && (
-          <EventForm
-            event={editingEvent || undefined}
+  // Calendar component - using useMemo to prevent recreation
+  const CalendarComponent = useMemo(() => {
+    const Component = () => {
+      useEffect(() => {
+        setCurrentView('calendar');
+      }, []);
+      
+      return (
+        <div className="view-container">
+          {calendarLoading && <LoadingIndicator overlay text="Loading calendar data..." />}
+          <CalendarView
             calendars={calendars}
-            selectedCalendar={selectedCalendar || undefined}
-            onSave={handleEventSave}
-            onCancel={handleEventFormCancel}
-            isEditing={!!editingEvent}
-            initialDate={initialDate}
+            events={events}
+            onDateRangeChange={handleDateRangeChange}
+            onEventClick={handleEventClick}
+            onCreateEvent={handleCreateEvent}
+            loading={calendarLoading}
+            currentDate={calendarCurrentDate}
+            onDateChange={setCalendarCurrentDate}
           />
-        )}
-      </div>
-    );
-  };
+          
+          {/* Event Form Modal */}
+          {showEventForm && (
+            <EventForm
+              event={editingEvent || undefined}
+              calendars={calendars}
+              selectedCalendar={selectedCalendar || undefined}
+              onSave={handleEventSave}
+              onCancel={handleEventFormCancel}
+              isEditing={!!editingEvent}
+              initialDate={initialDate}
+            />
+          )}
+        </div>
+      );
+    };
+    return Component;
+  }, [calendarCurrentDate, calendarLoading, calendars, editingEvent, events, handleCreateEvent, handleDateRangeChange, handleEventSave, initialDate, selectedCalendar, showEventForm]);
 
   // Contacts component
   const ContactsComponent = () => {
