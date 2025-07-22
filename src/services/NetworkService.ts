@@ -1,4 +1,4 @@
-import { Subject } from 'rxjs';
+import { Subject } from "rxjs";
 
 export interface NetworkStatus {
   online: boolean;
@@ -13,7 +13,7 @@ export class NetworkService {
   private static instance: NetworkService;
   private status: NetworkStatus = {
     online: navigator.onLine,
-    lastChecked: new Date()
+    lastChecked: new Date(),
   };
   private statusSubject = new Subject<NetworkStatus>();
   private checkInterval: number | null = null;
@@ -21,9 +21,9 @@ export class NetworkService {
 
   private constructor() {
     // Initialize network event listeners
-    window.addEventListener('online', this.handleOnline);
-    window.addEventListener('offline', this.handleOffline);
-    
+    window.addEventListener("online", this.handleOnline);
+    window.addEventListener("offline", this.handleOffline);
+
     // Start periodic checking
     this.startPeriodicChecking();
   }
@@ -115,7 +115,7 @@ export class NetworkService {
     }
 
     // Remove completed operations
-    completedIds.forEach(id => this.pendingOperations.delete(id));
+    completedIds.forEach((id) => this.pendingOperations.delete(id));
   }
 
   /**
@@ -144,7 +144,7 @@ export class NetworkService {
     if (this.checkInterval !== null) {
       this.stopPeriodicChecking();
     }
-    
+
     this.checkInterval = window.setInterval(() => {
       this.checkConnectivity();
     }, intervalMs);
@@ -164,8 +164,8 @@ export class NetworkService {
    * Clean up event listeners
    */
   public destroy(): void {
-    window.removeEventListener('online', this.handleOnline);
-    window.removeEventListener('offline', this.handleOffline);
+    window.removeEventListener("online", this.handleOnline);
+    window.removeEventListener("offline", this.handleOffline);
     this.stopPeriodicChecking();
   }
 
@@ -192,7 +192,7 @@ export class NetworkService {
     if (this.status.online !== online) {
       this.status = {
         online,
-        lastChecked: new Date()
+        lastChecked: new Date(),
       };
       this.statusSubject.next({ ...this.status });
     }

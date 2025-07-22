@@ -14,7 +14,6 @@ import { CacheService } from './services/CacheService';
 import { ProviderFactory } from './providers/ProviderFactory';
 import { Calendar, CalendarEvent, DateRange, AddressBook, Contact } from './types/dav';
 import { ErrorHandlingService, ErrorMessage as ErrorMessageType } from './services/ErrorHandlingService';
-import { NetworkService } from './services/NetworkService';
 import { useSync } from './hooks/useSync';
 import './App.css';
 
@@ -82,10 +81,11 @@ const AppContent: React.FC = () => {
   
   // Track the last date range to prevent duplicate calls
   const lastDateRangeRef = useRef<DateRange | null>(null);
+  // Store pending date range when calendars aren't available yet
+  const pendingDateRangeRef = useRef<DateRange | null>(null);
 
   const [authManager] = useState(() => AuthManager.getInstance());
   const [errorService] = useState(() => ErrorHandlingService.getInstance());
-  const [networkService] = useState(() => NetworkService.getInstance());
   
   // Initialize DAV client and sync service - will be configured when authenticated
   const [davClient] = useState(() => new DAVClient());
@@ -168,6 +168,8 @@ const AppContent: React.FC = () => {
       if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
         setSelectedAddressBook(cachedAddressBooks[0]);
       }
+      
+      // Events will be loaded by the useEffect when calendars become available
     } catch (error) {
       console.error('Error loading calendars and address books:', error);
       errorService.reportError(`Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -178,7 +180,9 @@ const AppContent: React.FC = () => {
 
   const loadEvents = useCallback(async (dateRange: DateRange) => {
     if (calendars.length === 0) {
-      console.log('No calendars available, skipping event loading');
+      console.log('No calendars available, storing date range for later');
+      // Store the date range for when calendars become available
+      pendingDateRangeRef.current = dateRange;
       return;
     }
     
@@ -220,6 +224,20 @@ const AppContent: React.FC = () => {
     }
   }, [calendars, sync, errorService]);
 
+  // Load events when calendars become available and we have a pending date range
+  useEffect(() => {
+    console.log('useEffect triggered - calendars.length:', calendars.length, 'pendingDateRange:', pendingDateRangeRef.current);
+    if (calendars.length > 0 && pendingDateRangeRef.current) {
+      const dateRangeToLoad = pendingDateRangeRef.current;
+      pendingDateRangeRef.current = null; // Clear the pending range
+      
+      console.log('Calendars now available, loading events for pending date range:', dateRangeToLoad);
+      
+      // Call loadEvents which will now work since calendars are available
+      loadEvents(dateRangeToLoad);
+    }
+  }, [calendars.length, loadEvents]);
+
   const handleDateRangeChange = useCallback((dateRange: DateRange) => {
     // Check if this is the same date range as the last call
     const lastDateRange = lastDateRangeRef.current;
@@ -238,6 +256,8 @@ const AppContent: React.FC = () => {
     
     console.log('Date range changed:', dateRange);
     setCurrentDateRange(dateRange);
+    
+    // Always try to load events - loadEvents will handle the case where calendars aren't available yet
     loadEvents(dateRange);
   }, [loadEvents]);
 
@@ -246,7 +266,7 @@ const AppContent: React.FC = () => {
     setShowEventForm(true);
   };
 
-  const handleCreateEvent = (date: Date) => {
+  const handleCreateEvent = useCallback((date: Date) => {
     // Set default calendar and show form
     if (calendars.length > 0) {
       setSelectedCalendar(calendars[0]);
@@ -255,7 +275,7 @@ const AppContent: React.FC = () => {
       // Store the initial date for the form
       setInitialDate(date);
     }
-  };
+  }, [calendars]);
 
   const [initialDate, setInitialDate] = useState<Date | undefined>(undefined);
 
