@@ -25,9 +25,16 @@ export class AuthManager implements IAuthManager {
    */
   async authenticate(config: AuthConfig): Promise<boolean> {
     try {
+      // Detect provider for the server
+      const provider = await ProviderFactory.createProviderForServer(config.caldavUrl);
+      if (!provider) {
+        throw new Error('Unable to detect server type. Please check the server URL.');
+      }
+
       // Test CalDAV connection
       const caldavClient = new DAVClient();
       caldavClient.setAuthConfig(config);
+      caldavClient.setProvider(provider);
 
       // Try to discover calendars to test connection
       await caldavClient.discoverCalendars();
@@ -35,6 +42,7 @@ export class AuthManager implements IAuthManager {
       // Test CardDAV connection
       const carddavClient = new DAVClient();
       carddavClient.setAuthConfig(config);
+      carddavClient.setProvider(provider);
 
       // Try to discover address books to test connection
       await carddavClient.discoverAddressBooks();
