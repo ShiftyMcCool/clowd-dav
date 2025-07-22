@@ -32,8 +32,30 @@ const ProtectedRoute: React.FC<{
   return <>{children}</>;
 };
 
-// Main App component
-function App() {
+// Navigation wrapper component that has access to useNavigate
+const NavigationWrapper: React.FC<{
+  currentView: 'calendar' | 'contacts';
+  username?: string;
+  onLogout: () => void;
+}> = ({ currentView, username, onLogout }) => {
+  const navigate = useNavigate();
+  
+  const handleViewChange = (view: 'calendar' | 'contacts') => {
+    navigate(`/${view}`);
+  };
+  
+  return (
+    <Navigation 
+      currentView={currentView}
+      onViewChange={handleViewChange}
+      username={username}
+      onLogout={onLogout}
+    />
+  );
+};
+
+// App content component that has access to router hooks
+const AppContent: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<AuthConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -396,10 +418,16 @@ function App() {
     // authManager.clearCredentials();
   };
 
-  // Handle view change from navigation
-  const handleViewChange = (view: 'calendar' | 'contacts') => {
-    setCurrentView(view);
-  };
+  const location = useLocation();
+  
+  // Update current view based on location
+  useEffect(() => {
+    if (location.pathname === '/calendar') {
+      setCurrentView('calendar');
+    } else if (location.pathname === '/contacts') {
+      setCurrentView('contacts');
+    }
+  }, [location.pathname]);
 
   // Setup component
   const SetupComponent = () => {
@@ -416,10 +444,6 @@ function App() {
   // Calendar component - using useMemo to prevent recreation
   const CalendarComponent = useMemo(() => {
     const Component = () => {
-      useEffect(() => {
-        setCurrentView('calendar');
-      }, []);
-      
       return (
         <div className="view-container">
           {calendarLoading && <LoadingIndicator overlay text="Loading calendar data..." />}
@@ -454,10 +478,6 @@ function App() {
 
   // Contacts component
   const ContactsComponent = () => {
-    useEffect(() => {
-      setCurrentView('contacts');
-    }, []);
-    
     return (
       <div className="view-container">
         <div className="contacts-view">
@@ -564,64 +584,70 @@ function App() {
   };
 
   return (
-    <Router>
-      <div className="app">
-        {isAuthenticated && (
-          <Navigation 
-            currentView={currentView}
-            onViewChange={handleViewChange}
-            username={currentConfig?.username}
-            onLogout={handleLogout}
+    <div className="app">
+      {isAuthenticated && (
+        <NavigationWrapper 
+          currentView={currentView}
+          username={currentConfig?.username}
+          onLogout={handleLogout}
+        />
+      )}
+      
+      <main className="app-main">
+        <Routes>
+          <Route path="/setup" element={
+            isAuthenticated ? <Navigate to="/calendar" replace /> : <SetupComponent />
+          } />
+          
+          <Route path="/calendar" element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <CalendarComponent />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/contacts" element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <ContactsComponent />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/" element={
+            isAuthenticated ? <Navigate to="/calendar" replace /> : <Navigate to="/setup" replace />
+          } />
+        </Routes>
+      </main>
+      
+      {/* Error message container */}
+      <div className="error-container">
+        {errors.map(error => (
+          <ErrorMessage
+            key={error.id}
+            error={error}
+            onDismiss={handleDismissError}
+            onRetry={handleRetryError}
           />
-        )}
-        
-        <main className="app-main">
-          <Routes>
-            <Route path="/setup" element={
-              isAuthenticated ? <Navigate to="/calendar" replace /> : <SetupComponent />
-            } />
-            
-            <Route path="/calendar" element={
-              <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <CalendarComponent />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/contacts" element={
-              <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <ContactsComponent />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/" element={
-              isAuthenticated ? <Navigate to="/calendar" replace /> : <Navigate to="/setup" replace />
-            } />
-          </Routes>
-        </main>
-        
-        {/* Error message container */}
-        <div className="error-container">
-          {errors.map(error => (
-            <ErrorMessage
-              key={error.id}
-              error={error}
-              onDismiss={handleDismissError}
-              onRetry={handleRetryError}
-            />
-          ))}
-        </div>
-        
-        {/* Offline indicator */}
-        <OfflineIndicator />
-        
-        {/* Sync status indicator */}
-        {isAuthenticated && (
-          <SyncStatusIndicator 
-            syncService={syncService} 
-            onManualSync={handleManualSync}
-          />
-        )}
+        ))}
       </div>
+      
+      {/* Offline indicator */}
+      <OfflineIndicator />
+      
+      {/* Sync status indicator */}
+      {isAuthenticated && (
+        <SyncStatusIndicator 
+          syncService={syncService} 
+          onManualSync={handleManualSync}
+        />
+      )}
+    </div>
+  );
+};
+
+// Main App wrapper component
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
