@@ -80,7 +80,7 @@ describe('DAVClient', () => {
           method: 'GET',
           headers: expect.objectContaining({
             'Content-Type': 'application/xml; charset=utf-8',
-            'User-Agent': 'CalDAV-CardDAV-Client/1.0',
+            'User-Agent': 'Clowd-DAV/1.0',
             'DAV': '1, 2, 3, calendar-access, addressbook',
             'Prefer': 'return-minimal',
             'Custom-Header': 'value'
@@ -108,7 +108,7 @@ describe('DAVClient', () => {
           body: data,
           headers: expect.objectContaining({
             'Content-Type': 'application/xml; charset=utf-8',
-            'User-Agent': 'CalDAV-CardDAV-Client/1.0',
+            'User-Agent': 'Clowd-DAV/1.0',
             'DAV': '1, 2, 3, calendar-access, addressbook',
             'Prefer': 'return-minimal',
             'Custom-Header': 'value'
@@ -136,7 +136,7 @@ describe('DAVClient', () => {
           body: data,
           headers: expect.objectContaining({
             'Content-Type': 'application/xml; charset=utf-8',
-            'User-Agent': 'CalDAV-CardDAV-Client/1.0',
+            'User-Agent': 'Clowd-DAV/1.0',
             'DAV': '1, 2, 3, calendar-access, addressbook',
             'Prefer': 'return-minimal',
             'Custom-Header': 'value'
@@ -162,7 +162,7 @@ describe('DAVClient', () => {
           method: 'DELETE',
           headers: expect.objectContaining({
             'Content-Type': 'application/xml; charset=utf-8',
-            'User-Agent': 'CalDAV-CardDAV-Client/1.0',
+            'User-Agent': 'Clowd-DAV/1.0',
             'DAV': '1, 2, 3, calendar-access, addressbook',
             'Prefer': 'return-minimal',
             'Custom-Header': 'value'
@@ -191,7 +191,7 @@ describe('DAVClient', () => {
           body: data,
           headers: expect.objectContaining({
             'Content-Type': 'application/xml; charset=utf-8',
-            'User-Agent': 'CalDAV-CardDAV-Client/1.0',
+            'User-Agent': 'Clowd-DAV/1.0',
             'DAV': '1, 2, 3, calendar-access, addressbook',
             'Prefer': 'return-minimal',
             'Depth': '1',
@@ -235,7 +235,7 @@ describe('DAVClient', () => {
           body: data,
           headers: expect.objectContaining({
             'Content-Type': 'application/xml; charset=utf-8',
-            'User-Agent': 'CalDAV-CardDAV-Client/1.0',
+            'User-Agent': 'Clowd-DAV/1.0',
             'DAV': '1, 2, 3, calendar-access, addressbook',
             'Prefer': 'return-minimal',
             'Depth': '1',
@@ -1550,7 +1550,7 @@ END:VCARD</card:address-data>
       expect(icalData).toContain('BEGIN:VCALENDAR');
       expect(icalData).toContain('END:VCALENDAR');
       expect(icalData).toContain('VERSION:2.0');
-      expect(icalData).toContain('PRODID:-//CalDAV-CardDAV-Client//EN');
+      expect(icalData).toContain('PRODID:-//Clowd-DAV//EN');
       expect(icalData).toContain('CALSCALE:GREGORIAN');
       
       // Check VEVENT structure

@@ -99,7 +99,7 @@ export class BaikalProvider extends BaseProvider {
     }
 
     // Add User-Agent for better compatibility
-    customizedRequest.headers['User-Agent'] = 'CalDAV-CardDAV-Client/1.0';
+    customizedRequest.headers['User-Agent'] = 'Clowd-DAV/1.0';
     
     // Ensure proper Content-Type for DAV requests
     if (customizedRequest.method === 'PROPFIND' || customizedRequest.method === 'REPORT') {

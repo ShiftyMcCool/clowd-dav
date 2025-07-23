@@ -48,7 +48,7 @@ export class DAVClient implements IDAVClient {
       // Prepare headers
       const headers: Record<string, string> = {
         "Content-Type": "application/xml; charset=utf-8",
-        "User-Agent": "CalDAV-CardDAV-Client/1.0",
+        "User-Agent": "Clowd-DAV/1.0",
         Prefer: "return-minimal",
         ...(options.headers as Record<string, string>),
       };
@@ -1176,7 +1176,7 @@ export class DAVClient implements IDAVClient {
       // Build iCalendar string manually for reliability
       let icalData = "BEGIN:VCALENDAR\r\n";
       icalData += "VERSION:2.0\r\n";
-      icalData += "PRODID:-//CalDAV-CardDAV-Client//EN\r\n";
+      icalData += "PRODID:-//Clowd-DAV//EN\r\n";
       icalData += "CALSCALE:GREGORIAN\r\n";
       icalData += "BEGIN:VEVENT\r\n";
       icalData += `UID:${event.uid}\r\n`;

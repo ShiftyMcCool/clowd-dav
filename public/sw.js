@@ -1,6 +1,6 @@
-const CACHE_NAME = 'caldav-carddav-client-v1';
-const STATIC_CACHE_NAME = 'caldav-carddav-client-static-v1';
-const DYNAMIC_CACHE_NAME = 'caldav-carddav-client-dynamic-v1';
+const CACHE_NAME = 'clowd-dav-v1';
+const STATIC_CACHE_NAME = 'clowd-dav-static-v1';
+const DYNAMIC_CACHE_NAME = 'clowd-dav-dynamic-v1';
 
 // Static assets to cache
 const STATIC_ASSETS = [

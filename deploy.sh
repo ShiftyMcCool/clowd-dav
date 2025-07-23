@@ -126,8 +126,8 @@ esac
 print_status "Building Docker image..."
 docker build \
     --build-arg REACT_APP_ENVIRONMENT=$ENVIRONMENT \
-    -t caldav-carddav-client:$DOCKER_TAG \
-    -t caldav-carddav-client:$ENVIRONMENT-$DOCKER_TAG \
+    -t clowd-dav:$DOCKER_TAG \
+    -t clowd-dav:$ENVIRONMENT-$DOCKER_TAG \
     .
 
 print_status "Docker image built successfully"

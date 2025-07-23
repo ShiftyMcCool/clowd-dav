@@ -134,7 +134,7 @@ describe('BaikalProvider', () => {
       };
 
       const customized = provider.customizeRequest(request);
-      expect(customized.headers?.['User-Agent']).toBe('CalDAV-CardDAV-Client/1.0');
+      expect(customized.headers?.['User-Agent']).toBe('Clowd-DAV/1.0');
     });
 
     it('should set Content-Type for PROPFIND requests', () => {
@@ -168,7 +168,7 @@ describe('BaikalProvider', () => {
 
       const customized = provider.customizeRequest(request);
       expect(customized.headers?.['Authorization']).toBe('Basic dGVzdA==');
-      expect(customized.headers?.['User-Agent']).toBe('CalDAV-CardDAV-Client/1.0');
+      expect(customized.headers?.['User-Agent']).toBe('Clowd-DAV/1.0');
     });
 
     it('should not modify original request object', () => {

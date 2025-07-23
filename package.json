@@ -1,5 +1,5 @@
 {
-  "name": "caldav-carddav-client",
+  "name": "clowd-dav",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -32,10 +32,10 @@
     "test": "react-scripts test",
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "analyze": "npm run build && npx serve -s build",
-    "docker:build": "docker build -t caldav-carddav-client .",
-    "docker:run": "docker run -p 80:80 caldav-carddav-client",
-    "docker:build-staging": "docker build -t caldav-carddav-client:staging --build-arg REACT_APP_ENVIRONMENT=staging .",
-    "docker:build-production": "docker build -t caldav-carddav-client:production --build-arg REACT_APP_ENVIRONMENT=production .",
+    "docker:build": "docker build -t clowd-dav .",
+    "docker:run": "docker run -p 80:80 clowd-dav",
+    "docker:build-staging": "docker build -t clowd-dav:staging --build-arg REACT_APP_ENVIRONMENT=staging .",
+    "docker:build-production": "docker build -t clowd-dav:production --build-arg REACT_APP_ENVIRONMENT=production .",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
