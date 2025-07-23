@@ -36,19 +36,37 @@ jobs:
     image: node
     interpreter: !DefaultInterpreter
       commands: |
-        npm install
-        export CI=TRUE
-        npx react-scripts build
-        npx env-cmd -f .env.staging react-scripts build
-        npx env-cmd -f .env.production react-scripts build
-        npx react-scripts test
-        npx react-scripts test --coverage --watchAll=false
-        npx docker build -t clowd-dav .
-        npx docker build -t clowd-dav:staging --build-arg REACT_APP_ENVIRONMENT=staging .
-        npx docker build -t clowd-dav:production --build-arg REACT_APP_ENVIRONMENT=production .
+        npm run docker:build-production
     useTTY: true
     condition: SUCCESSFUL
     optional: false
+  - !BuildImageStep
+    name: build docker
+    output: !OCIOutput
+      destPath: ./oci
+    registryLogins:
+    - registryUrl: '@server_host@'
+      userName: '@job_token@'
+      passwordSecret: access-token
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PushImageStep
+    name: push ci image
+    srcPath: ./oci
+    destImage: '@server@/@project_path@/@project_name@:@build_number@'
+    registryLogins:
+    - registryUrl: '@server_host@'
+      userName: '@job_token@'
+      passwordSecret: access-token
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PushImageStep
+    name: push latest image
+    srcPath: ./oci
+    destImage: '@server@/@project_path@/@project_name@:latest'
+    registryLogins:
+    - registryUrl: '@server_host@'
+      userName: '@job_token@'
+      passwordSecret: access-token
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   triggers:
   - !BranchUpdateTrigger {}
   retryCondition: never
