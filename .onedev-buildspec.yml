@@ -1,0 +1,57 @@
+version: 40
+jobs:
+- name: react ci
+  steps:
+  - !CheckoutStep
+    name: checkout code
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    condition: SUCCESSFUL
+    optional: false
+  - !GenerateChecksumStep
+    name: generate package checksum
+    files: package-lock.json yarn.lock
+    targetFile: checksum
+    condition: SUCCESSFUL
+    optional: false
+  - !SetupCacheStep
+    name: set up npm cache
+    key: node_modules_@file:checksum@
+    loadKeys:
+    - node_modules
+    paths:
+    - node_modules
+    uploadStrategy: UPLOAD_IF_NOT_HIT
+    condition: SUCCESSFUL
+    optional: false
+  - !SetBuildVersionStep
+    name: set build version
+    buildVersion: '@script:builtin:node:determine-project-version@'
+    condition: SUCCESSFUL
+    optional: false
+  - !CommandStep
+    name: build & test
+    runInContainer: true
+    image: node
+    interpreter: !DefaultInterpreter
+      commands: |
+        npm install
+        export CI=TRUE
+        npx react-scripts build
+        npx env-cmd -f .env.staging react-scripts build
+        npx env-cmd -f .env.production react-scripts build
+        npx react-scripts test
+        npx react-scripts test --coverage --watchAll=false
+        npx docker build -t clowd-dav .
+        npx docker build -t clowd-dav:staging --build-arg REACT_APP_ENVIRONMENT=staging .
+        npx docker build -t clowd-dav:production --build-arg REACT_APP_ENVIRONMENT=production .
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - !BranchUpdateTrigger {}
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 14400
