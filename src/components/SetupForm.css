@@ -173,23 +173,18 @@
   border-bottom: 1px solid #eee;
 }
 
-.stored-credentials-section .form-group {
+.stored-credentials-actions {
   display: flex;
   gap: 10px;
-  align-items: flex-end;
+  margin-top: 15px;
 }
 
-.stored-credentials-section .form-group label {
+.stored-credentials-actions .btn-primary {
   flex: 1;
 }
 
-.stored-credentials-section .form-group input {
-  flex: 2;
-}
-
-.stored-credentials-section .form-group button {
-  flex: 0 0 auto;
-  margin-bottom: 0;
+.stored-credentials-actions .btn-secondary {
+  flex: 1;
 }
 
 .divider {
@@ -270,12 +265,7 @@
     flex-direction: column;
   }
   
-  .stored-credentials-section .form-group {
+  .stored-credentials-actions {
     flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .stored-credentials-section .form-group button {
-    margin-top: 10px;
   }
 }

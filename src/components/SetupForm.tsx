@@ -4,7 +4,7 @@ import { AuthManager } from '../services/AuthManager';
 import './SetupForm.css';
 
 interface SetupFormProps {
-  onSetupComplete: (config: AuthConfig) => void;
+  onSetupComplete: (config: AuthConfig, masterPassword?: string) => void;
   onCancel?: () => void;
 }
 
@@ -15,6 +15,7 @@ interface FormData {
   password: string;
   masterPassword: string;
   rememberCredentials: boolean;
+  persistSession: boolean;
 }
 
 interface ConnectionStatus {
@@ -31,7 +32,8 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
     username: '',
     password: '',
     masterPassword: '',
-    rememberCredentials: true
+    rememberCredentials: true,
+    persistSession: false
   });
 
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
@@ -139,12 +141,20 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
     };
 
     try {
+      console.log('Form submission - rememberCredentials:', formData.rememberCredentials, 'persistSession:', formData.persistSession);
+      
       // Store credentials if requested
       if (formData.rememberCredentials) {
-        await authManager.storeCredentials(config, formData.masterPassword);
+        console.log('Storing credentials with persistence:', formData.persistSession);
+        await authManager.storeCredentials(config, formData.masterPassword, formData.persistSession);
+        onSetupComplete(config, formData.masterPassword);
+      } else {
+        console.log('Creating temporary session with persistence:', formData.persistSession);
+        // Create a session without storing credentials permanently
+        authManager.createSession(config, formData.persistSession);
+        const sessionToken = authManager.getStoredSessionToken();
+        onSetupComplete(config, sessionToken || undefined);
       }
-
-      onSetupComplete(config);
     } catch (error) {
       setValidationErrors([
         error instanceof Error ? error.message : 'Failed to save credentials'
@@ -179,6 +189,41 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
     }
   };
 
+  const loginWithStoredCredentials = async () => {
+    if (!formData.masterPassword) {
+      setValidationErrors(['Master password is required to login with stored credentials']);
+      return;
+    }
+
+    try {
+      const credentials = await authManager.getStoredCredentials(formData.masterPassword);
+      if (credentials) {
+        console.log('Login with stored credentials - persistSession:', formData.persistSession);
+        
+        // Clear both storage locations first
+        localStorage.removeItem('caldav_persistent_session');
+        sessionStorage.removeItem('caldav_session_token');
+        
+        // Create session based on user's current persistence preference
+        if (formData.persistSession) {
+          console.log('Storing session token in localStorage (persistent)');
+          localStorage.setItem('caldav_persistent_session', formData.masterPassword);
+        } else {
+          console.log('Storing session token in sessionStorage (page reload only)');
+          sessionStorage.setItem('caldav_session_token', formData.masterPassword);
+        }
+        
+        onSetupComplete(credentials, formData.masterPassword);
+      } else {
+        setValidationErrors(['Invalid master password or no stored credentials found']);
+      }
+    } catch (error) {
+      setValidationErrors([
+        error instanceof Error ? error.message : 'Failed to login with stored credentials'
+      ]);
+    }
+  };
+
   return (
     <div className="setup-form-container">
       <div className="setup-form">
@@ -186,7 +231,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
         
         {hasStoredCredentials && (
           <div className="stored-credentials-section">
-            <h3>Load Stored Credentials</h3>
+            <h3>Login with Stored Credentials</h3>
             <div className="form-group">
               <label htmlFor="masterPassword">Master Password:</label>
               <input
@@ -195,13 +240,40 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
                 value={formData.masterPassword}
                 onChange={(e) => handleInputChange('masterPassword', e.target.value)}
                 placeholder="Enter master password"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    loginWithStoredCredentials();
+                  }
+                }}
               />
+            </div>
+            
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={formData.persistSession}
+                  onChange={(e) => handleInputChange('persistSession', e.target.checked)}
+                />
+                Keep me logged in (survives browser restart)
+              </label>
+            </div>
+
+            <div className="stored-credentials-actions">
+              <button 
+                type="button" 
+                onClick={loginWithStoredCredentials}
+                className="btn-primary"
+              >
+                Login
+              </button>
               <button 
                 type="button" 
                 onClick={loadStoredCredentials}
                 className="btn-secondary"
               >
-                Load Credentials
+                Load & Edit Credentials
               </button>
             </div>
             <div className="divider">OR</div>
@@ -266,6 +338,20 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
               />
               Remember credentials securely in browser
             </label>
+          </div>
+
+          <div className="form-group checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={formData.persistSession}
+                onChange={(e) => handleInputChange('persistSession', e.target.checked)}
+              />
+              Keep me logged in (survives browser restart)
+            </label>
+            <small className="help-text">
+              When enabled, you'll stay logged in even after closing the browser
+            </small>
           </div>
 
           {formData.rememberCredentials && (

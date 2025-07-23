@@ -119,6 +119,8 @@ const AppContent: React.FC = () => {
   const lastDateRangeRef = useRef<DateRange | null>(null);
   // Store pending date range when calendars aren't available yet
   const pendingDateRangeRef = useRef<DateRange | null>(null);
+  // Track if we've already checked for stored credentials to prevent infinite loops
+  const hasCheckedStoredCredentials = useRef(false);
 
   const [authManager] = useState(() => AuthManager.getInstance());
   const [errorService] = useState(() => ErrorHandlingService.getInstance());
@@ -141,30 +143,37 @@ const AppContent: React.FC = () => {
 
   // Note: Initial sync is handled in handleSetupComplete after provider setup
 
-  useEffect(() => {
-    // Check if user has stored credentials and try to load them
-    const checkStoredCredentials = async () => {
-      try {
-        if (authManager.hasStoredCredentials()) {
-          // We have stored credentials, but we need the master password
-          // For now, just show the setup form
-          setInitialLoading(false);
-        } else {
-          setInitialLoading(false);
-        }
-      } catch (error) {
-        console.error("Error checking stored credentials:", error);
-        errorService.reportError(
-          "Failed to check stored credentials. Please try again."
-        );
-        setInitialLoading(false);
+  const loadCalendarsAndAddressBooks = useCallback(async () => {
+    try {
+      await sync.syncCalendars();
+      await sync.syncAddressBooks();
+
+      // Update local state with cached data
+      const cachedCalendars = CacheService.getCachedCalendars();
+      const cachedAddressBooks = CacheService.getCachedAddressBooks();
+
+      console.log("Setting calendars:", cachedCalendars.length);
+      setCalendars(cachedCalendars);
+      console.log("Setting address books:", cachedAddressBooks.length);
+      setAddressBooks(cachedAddressBooks);
+
+      // Select first address book by default
+      if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
+        setSelectedAddressBook(cachedAddressBooks[0]);
       }
-    };
 
-    checkStoredCredentials();
-  }, [authManager, errorService]);
+      // Events will be loaded by the useEffect when calendars become available
+    } catch (error) {
+      console.error("Error loading calendars and address books:", error);
+      errorService.reportError(
+        `Failed to load data: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }, [sync, selectedAddressBook, errorService]);
 
-  const handleSetupComplete = async (config: AuthConfig) => {
+  const handleSetupComplete = useCallback(async (config: AuthConfig, masterPassword?: string) => {
     showLoading("Setting up connection...", "large");
 
     try {
@@ -197,37 +206,72 @@ const AppContent: React.FC = () => {
     } finally {
       hideLoading();
     }
-  };
+  }, [davClient, errorService, hideLoading, showLoading, loadCalendarsAndAddressBooks]);
 
-  const loadCalendarsAndAddressBooks = async () => {
-    try {
-      await sync.syncCalendars();
-      await sync.syncAddressBooks();
-
-      // Update local state with cached data
-      const cachedCalendars = CacheService.getCachedCalendars();
-      const cachedAddressBooks = CacheService.getCachedAddressBooks();
-
-      console.log("Setting calendars:", cachedCalendars.length);
-      setCalendars(cachedCalendars);
-      console.log("Setting address books:", cachedAddressBooks.length);
-      setAddressBooks(cachedAddressBooks);
-
-      // Select first address book by default
-      if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
-        setSelectedAddressBook(cachedAddressBooks[0]);
+  // Check for stored credentials and session on app startup
+  useEffect(() => {
+    const checkStoredCredentials = async () => {
+      // Prevent infinite loops by checking if we've already done this
+      if (hasCheckedStoredCredentials.current) {
+        return;
       }
+      hasCheckedStoredCredentials.current = true;
 
-      // Events will be loaded by the useEffect when calendars become available
-    } catch (error) {
-      console.error("Error loading calendars and address books:", error);
-      errorService.reportError(
-        `Failed to load data: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    }
-  };
+      try {
+        console.log('Checking for stored credentials and session...');
+        
+        // Check if we have a stored session token
+        const sessionToken = authManager.getStoredSessionToken();
+        console.log('Session token found:', !!sessionToken);
+        
+        if (sessionToken) {
+          try {
+            console.log('Attempting to restore session with token...');
+            
+            // If we have stored credentials, try to decrypt them
+            if (authManager.hasStoredCredentials()) {
+              const credentials = await authManager.getStoredCredentials(sessionToken);
+              if (credentials) {
+                console.log('Successfully restored session from stored credentials...');
+                await handleSetupComplete(credentials, sessionToken);
+                setInitialLoading(false);
+                return;
+              }
+            }
+            
+            // If no stored credentials but we have a session token, check if it's a temporary session
+            const currentCredentials = authManager.getCurrentCredentials();
+            if (currentCredentials) {
+              console.log('Found credentials in memory, restoring session...');
+              await handleSetupComplete(currentCredentials, sessionToken);
+              setInitialLoading(false);
+              return;
+            }
+            
+            console.log('No valid credentials found for session token, clearing session');
+            authManager.clearSession();
+          } catch (error) {
+            console.log('Error restoring session:', error);
+            authManager.clearSession();
+          }
+        } else {
+          console.log('No session token found');
+        }
+        
+        console.log('No valid session found, user needs to login');
+        setInitialLoading(false);
+      } catch (error) {
+        console.error("Error checking stored credentials:", error);
+        errorService.reportError(
+          "Failed to check stored credentials. Please try again."
+        );
+        setInitialLoading(false);
+      }
+    };
+
+    // Only run this effect once on mount
+    checkStoredCredentials();
+  }, [authManager, errorService, handleSetupComplete]);
 
   const loadEvents = useCallback(
     async (dateRange: DateRange) => {
@@ -576,8 +620,8 @@ const AppContent: React.FC = () => {
   const SetupComponent = () => {
     const navigate = useNavigate();
 
-    const handleSetup = async (config: AuthConfig) => {
-      await handleSetupComplete(config);
+    const handleSetup = async (config: AuthConfig, masterPassword?: string) => {
+      await handleSetupComplete(config, masterPassword);
       navigate("/calendar");
     };
 
