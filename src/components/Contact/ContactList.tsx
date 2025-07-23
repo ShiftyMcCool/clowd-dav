@@ -70,7 +70,16 @@ const ContactList: React.FC<ContactListProps> = ({
   };
 
   if (loading) {
-    return <div className="contact-list-loading">Loading contacts...</div>;
+    return (
+      <div className="contact-list-container">
+        <div className="contact-list-header">
+          <h2>{addressBook.displayName}</h2>
+        </div>
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
+          Loading contacts...
+        </div>
+      </div>
+    );
   }
 
   if (error) {

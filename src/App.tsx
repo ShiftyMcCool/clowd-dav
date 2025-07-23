@@ -1,21 +1,49 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { SetupForm } from './components/SetupForm';
-import { CalendarView } from './components/Calendar/CalendarView';
-import { EventForm } from './components/Calendar/EventForm';
-import { ContactList, ContactDetail, ContactForm } from './components/Contact';
-import { Navigation } from './components/Navigation';
-import { LoadingIndicator, ErrorMessage, OfflineIndicator, SyncStatusIndicator } from './components/common';
-import { AuthConfig } from './types/auth';
-import { AuthManager } from './services/AuthManager';
-import { DAVClient } from './services/DAVClient';
-import { SyncService } from './services/SyncService';
-import { CacheService } from './services/CacheService';
-import { ProviderFactory } from './providers/ProviderFactory';
-import { Calendar, CalendarEvent, DateRange, AddressBook, Contact } from './types/dav';
-import { ErrorHandlingService, ErrorMessage as ErrorMessageType } from './services/ErrorHandlingService';
-import { useSync } from './hooks/useSync';
-import './App.css';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
+import { SetupForm } from "./components/SetupForm";
+import { CalendarView } from "./components/Calendar/CalendarView";
+import { EventForm } from "./components/Calendar/EventForm";
+import { ContactList, ContactDetail, ContactForm } from "./components/Contact";
+import { Navigation } from "./components/Navigation";
+import {
+  LoadingOverlay,
+  ErrorMessage,
+  OfflineIndicator,
+  SyncStatusIndicator,
+} from "./components/common";
+import { LoadingProvider, useLoading } from "./contexts/LoadingContext";
+import { AuthConfig } from "./types/auth";
+import { AuthManager } from "./services/AuthManager";
+import { DAVClient } from "./services/DAVClient";
+import { SyncService } from "./services/SyncService";
+import { CacheService } from "./services/CacheService";
+import { ProviderFactory } from "./providers/ProviderFactory";
+import {
+  Calendar,
+  CalendarEvent,
+  DateRange,
+  AddressBook,
+  Contact,
+} from "./types/dav";
+import {
+  ErrorHandlingService,
+  ErrorMessage as ErrorMessageType,
+} from "./services/ErrorHandlingService";
+import { useSync } from "./hooks/useSync";
+import "./App.css";
 
 // Protected route component
 const ProtectedRoute: React.FC<{
@@ -23,7 +51,7 @@ const ProtectedRoute: React.FC<{
   children: React.ReactNode;
 }> = ({ isAuthenticated, children }) => {
   const location = useLocation();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/setup" state={{ from: location }} replace />;
   }
@@ -33,18 +61,18 @@ const ProtectedRoute: React.FC<{
 
 // Navigation wrapper component that has access to useNavigate
 const NavigationWrapper: React.FC<{
-  currentView: 'calendar' | 'contacts';
+  currentView: "calendar" | "contacts";
   username?: string;
   onLogout: () => void;
 }> = ({ currentView, username, onLogout }) => {
   const navigate = useNavigate();
-  
-  const handleViewChange = (view: 'calendar' | 'contacts') => {
+
+  const handleViewChange = (view: "calendar" | "contacts") => {
     navigate(`/${view}`);
   };
-  
+
   return (
-    <Navigation 
+    <Navigation
       currentView={currentView}
       onViewChange={handleViewChange}
       username={username}
@@ -55,30 +83,38 @@ const NavigationWrapper: React.FC<{
 
 // App content component that has access to router hooks
 const AppContent: React.FC = () => {
+  const { showLoading, hideLoading, loadingState } = useLoading();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<AuthConfig | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [calendarLoading, setCalendarLoading] = useState(false);
-  const [currentView, setCurrentView] = useState<'calendar' | 'contacts'>('calendar');
+  const [currentView, setCurrentView] = useState<"calendar" | "contacts">(
+    "calendar"
+  );
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [selectedCalendar, setSelectedCalendar] = useState<Calendar | null>(null);
-  const [currentDateRange, setCurrentDateRange] = useState<DateRange | null>(null);
-  const [calendarCurrentDate, setCalendarCurrentDate] = useState<Date>(new Date());
-  
+  const [selectedCalendar, setSelectedCalendar] = useState<Calendar | null>(
+    null
+  );
+  const [currentDateRange, setCurrentDateRange] = useState<DateRange | null>(
+    null
+  );
+  const [calendarCurrentDate, setCalendarCurrentDate] = useState<Date>(
+    new Date()
+  );
+
   // Contact state
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
-  const [selectedAddressBook, setSelectedAddressBook] = useState<AddressBook | null>(null);
+  const [selectedAddressBook, setSelectedAddressBook] =
+    useState<AddressBook | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showContactForm, setShowContactForm] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [contactsLoading, setContactsLoading] = useState(false);
-  
+
   // Error handling and offline state
   const [errors, setErrors] = useState<ErrorMessageType[]>([]);
-  
+
   // Track the last date range to prevent duplicate calls
   const lastDateRangeRef = useRef<DateRange | null>(null);
   // Store pending date range when calendars aren't available yet
@@ -86,7 +122,7 @@ const AppContent: React.FC = () => {
 
   const [authManager] = useState(() => AuthManager.getInstance());
   const [errorService] = useState(() => ErrorHandlingService.getInstance());
-  
+
   // Initialize DAV client and sync service - will be configured when authenticated
   const [davClient] = useState(() => new DAVClient());
   const [syncService] = useState(() => new SyncService(davClient));
@@ -95,9 +131,9 @@ const AppContent: React.FC = () => {
   // Initialize error handling service
   useEffect(() => {
     const unsubscribe = errorService.subscribe((updatedErrors) => {
-      setErrors(updatedErrors.filter(error => !error.dismissed));
+      setErrors(updatedErrors.filter((error) => !error.dismissed));
     });
-    
+
     return () => {
       unsubscribe();
     };
@@ -112,14 +148,16 @@ const AppContent: React.FC = () => {
         if (authManager.hasStoredCredentials()) {
           // We have stored credentials, but we need the master password
           // For now, just show the setup form
-          setLoading(false);
+          setInitialLoading(false);
         } else {
-          setLoading(false);
+          setInitialLoading(false);
         }
       } catch (error) {
-        console.error('Error checking stored credentials:', error);
-        errorService.reportError('Failed to check stored credentials. Please try again.');
-        setLoading(false);
+        console.error("Error checking stored credentials:", error);
+        errorService.reportError(
+          "Failed to check stored credentials. Please try again."
+        );
+        setInitialLoading(false);
       }
     };
 
@@ -127,191 +165,237 @@ const AppContent: React.FC = () => {
   }, [authManager, errorService]);
 
   const handleSetupComplete = async (config: AuthConfig) => {
-    setCurrentConfig(config);
-    setIsAuthenticated(true);
-    
-    // Initialize DAV client with configuration
-    davClient.setAuthConfig(config);
-    
-    // Set up provider
+    showLoading("Setting up connection...", "large");
+
     try {
-      const provider = await ProviderFactory.createProviderForServer(config.caldavUrl);
+      setCurrentConfig(config);
+      setIsAuthenticated(true);
+
+      // Initialize DAV client with configuration
+      davClient.setAuthConfig(config);
+
+      // Set up provider
+      const provider = await ProviderFactory.createProviderForServer(
+        config.caldavUrl
+      );
       if (provider) {
         davClient.setProvider(provider);
-        
+
         // Load calendars and address books using sync service
         await loadCalendarsAndAddressBooks();
       } else {
-        console.error('No compatible provider found for the server');
+        console.error("No compatible provider found for the server");
+        errorService.reportError("No compatible provider found for the server");
       }
     } catch (error) {
-      console.error('Error setting up DAV client:', error);
+      console.error("Error setting up DAV client:", error);
+      errorService.reportError(
+        `Failed to setup connection: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    } finally {
+      hideLoading();
     }
   };
 
   const loadCalendarsAndAddressBooks = async () => {
     try {
-      
       await sync.syncCalendars();
       await sync.syncAddressBooks();
-      
+
       // Update local state with cached data
       const cachedCalendars = CacheService.getCachedCalendars();
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
-      
-      console.log('Setting calendars:', cachedCalendars.length);
+
+      console.log("Setting calendars:", cachedCalendars.length);
       setCalendars(cachedCalendars);
-      console.log('Setting address books:', cachedAddressBooks.length);
+      console.log("Setting address books:", cachedAddressBooks.length);
       setAddressBooks(cachedAddressBooks);
-      
+
       // Select first address book by default
       if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
         setSelectedAddressBook(cachedAddressBooks[0]);
       }
-      
+
       // Events will be loaded by the useEffect when calendars become available
     } catch (error) {
-      console.error('Error loading calendars and address books:', error);
-      errorService.reportError(`Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Error loading calendars and address books:", error);
+      errorService.reportError(
+        `Failed to load data: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
+  const loadEvents = useCallback(
+    async (dateRange: DateRange) => {
+      if (calendars.length === 0) {
+        console.log("No calendars available, storing date range for later");
+        // Store the date range for when calendars become available
+        pendingDateRangeRef.current = dateRange;
+        return;
+      }
 
+      try {
+        // Temporarily disable global loading to prevent infinite loops
+        // showLoading("Loading calendar events...");
 
-  const loadEvents = useCallback(async (dateRange: DateRange) => {
-    if (calendars.length === 0) {
-      console.log('No calendars available, storing date range for later');
-      // Store the date range for when calendars become available
-      pendingDateRangeRef.current = dateRange;
-      return;
-    }
-    
-    try {
-      setCalendarLoading(true);
-      
-      const allEvents: CalendarEvent[] = [];
-      const failedCalendars: string[] = [];
-      
-      // Load events from all calendars using sync service
-      for (const calendar of calendars) {
-        try {
-          const calendarEvents = await sync.getEvents(calendar, dateRange);
-          allEvents.push(...calendarEvents);
-        } catch (error) {
-          console.error(`Error loading events from calendar ${calendar.displayName}:`, error);
-          failedCalendars.push(calendar.displayName);
+        const allEvents: CalendarEvent[] = [];
+        const failedCalendars: string[] = [];
+
+        // Load events from all calendars using sync service
+        for (const calendar of calendars) {
+          try {
+            const calendarEvents = await sync.getEvents(calendar, dateRange);
+            allEvents.push(...calendarEvents);
+          } catch (error) {
+            console.error(
+              `Error loading events from calendar ${calendar.displayName}:`,
+              error
+            );
+            failedCalendars.push(calendar.displayName);
+          }
         }
-      }
-      
-      if (failedCalendars.length > 0) {
+
+        if (failedCalendars.length > 0) {
+          errorService.reportError(
+            `Failed to load events from ${failedCalendars.join(", ")}.`,
+            "warning"
+          );
+        }
+
+        setEvents(allEvents);
+      } catch (error) {
+        console.error("Error loading events:", error);
+
+        // Report error without retry to avoid circular dependency
         errorService.reportError(
-          `Failed to load events from ${failedCalendars.join(', ')}.`,
-          'warning'
+          `Failed to load events: ${errorService.formatErrorMessage(error)}`,
+          "error"
         );
+      } finally {
+        // hideLoading();
       }
-      
-      setEvents(allEvents);
-    } catch (error) {
-      console.error('Error loading events:', error);
-      
-      // Report error without retry to avoid circular dependency
-      errorService.reportError(
-        `Failed to load events: ${errorService.formatErrorMessage(error)}`,
-        'error'
-      );
-    } finally {
-      setCalendarLoading(false);
-    }
-  }, [calendars, sync, errorService]);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [calendars, sync, errorService]
+  );
 
   // Load events when calendars become available and we have a pending date range
   useEffect(() => {
-    console.log('useEffect triggered - calendars.length:', calendars.length, 'pendingDateRange:', pendingDateRangeRef.current);
+    console.log(
+      "useEffect triggered - calendars.length:",
+      calendars.length,
+      "pendingDateRange:",
+      pendingDateRangeRef.current
+    );
     if (calendars.length > 0 && pendingDateRangeRef.current) {
       const dateRangeToLoad = pendingDateRangeRef.current;
       pendingDateRangeRef.current = null; // Clear the pending range
-      
-      console.log('Calendars now available, loading events for pending date range:', dateRangeToLoad);
-      
+
+      console.log(
+        "Calendars now available, loading events for pending date range:",
+        dateRangeToLoad
+      );
+
       // Call loadEvents which will now work since calendars are available
       loadEvents(dateRangeToLoad);
     }
-  }, [calendars.length, loadEvents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendars.length]);
 
-  const handleDateRangeChange = useCallback((dateRange: DateRange) => {
-    // Check if this is the same date range as the last call
-    const lastDateRange = lastDateRangeRef.current;
-    if (lastDateRange && 
+  const handleDateRangeChange = useCallback(
+    (dateRange: DateRange) => {
+      // Check if this is the same date range as the last call
+      const lastDateRange = lastDateRangeRef.current;
+      if (
+        lastDateRange &&
         dateRange.start.getTime() === lastDateRange.start.getTime() &&
-        dateRange.end.getTime() === lastDateRange.end.getTime()) {
-      console.log('Date range unchanged, skipping');
-      return;
-    }
-    
-    // Update the last date range
-    lastDateRangeRef.current = {
-      start: new Date(dateRange.start),
-      end: new Date(dateRange.end)
-    };
-    
-    console.log('Date range changed:', dateRange);
-    setCurrentDateRange(dateRange);
-    
-    // Always try to load events - loadEvents will handle the case where calendars aren't available yet
-    loadEvents(dateRange);
-  }, [loadEvents]);
+        dateRange.end.getTime() === lastDateRange.end.getTime()
+      ) {
+        console.log("Date range unchanged, skipping");
+        return;
+      }
+
+      // Update the last date range
+      lastDateRangeRef.current = {
+        start: new Date(dateRange.start),
+        end: new Date(dateRange.end),
+      };
+
+      console.log("Date range changed:", dateRange);
+      setCurrentDateRange(dateRange);
+
+      // Always try to load events - loadEvents will handle the case where calendars aren't available yet
+      loadEvents(dateRange);
+    },
+    [loadEvents]
+  );
 
   const handleEventClick = (event: CalendarEvent) => {
     setEditingEvent(event);
     setShowEventForm(true);
   };
 
-  const handleCreateEvent = useCallback((date: Date) => {
-    // Set default calendar and show form
-    if (calendars.length > 0) {
-      setSelectedCalendar(calendars[0]);
-      setEditingEvent(null);
-      setShowEventForm(true);
-      // Store the initial date for the form
-      setInitialDate(date);
-    }
-  }, [calendars]);
+  const handleCreateEvent = useCallback(
+    (date: Date) => {
+      // Set default calendar and show form
+      if (calendars.length > 0) {
+        setSelectedCalendar(calendars[0]);
+        setEditingEvent(null);
+        setShowEventForm(true);
+        // Store the initial date for the form
+        setInitialDate(date);
+      }
+    },
+    [calendars]
+  );
 
   const [initialDate, setInitialDate] = useState<Date | undefined>(undefined);
 
-  const handleEventSave = async (eventData: CalendarEvent, calendar: Calendar) => {
-    try {
-      if (editingEvent) {
-        // Update existing event using sync service
-        await sync.updateEvent(calendar, eventData);
-      } else {
-        // Create new event using sync service
-        await sync.createEvent(calendar, eventData);
-      }
+  const handleEventSave = useCallback(
+    async (eventData: CalendarEvent, calendar: Calendar) => {
+      try {
+        showLoading(editingEvent ? "Updating event..." : "Creating event...");
 
-      // Refresh events after successful save
-      if (currentDateRange) {
-        await loadEvents(currentDateRange);
-      }
+        if (editingEvent) {
+          // Update existing event using sync service
+          await sync.updateEvent(calendar, eventData);
+        } else {
+          // Create new event using sync service
+          await sync.createEvent(calendar, eventData);
+        }
 
-      // Close form
-      setShowEventForm(false);
-      setEditingEvent(null);
-      setSelectedCalendar(null);
-      setInitialDate(undefined);
-    } catch (error) {
-      console.error('Error saving event:', error);
-      
-      // Report error but don't throw it
-      errorService.reportError(
-        `Failed to save event: ${errorService.formatErrorMessage(error)}`,
-        'error'
-      );
-      
-      // Don't close the form so the user can try again
-      throw error; // Re-throw to let the form handle the error display
-    }
-  };
+        // Refresh events after successful save
+        if (currentDateRange) {
+          await loadEvents(currentDateRange);
+        }
+
+        // Close form
+        setShowEventForm(false);
+        setEditingEvent(null);
+        setSelectedCalendar(null);
+        setInitialDate(undefined);
+      } catch (error) {
+        console.error("Error saving event:", error);
+
+        // Report error but don't throw it
+        errorService.reportError(
+          `Failed to save event: ${errorService.formatErrorMessage(error)}`,
+          "error"
+        );
+
+        // Don't close the form so the user can try again
+        throw error; // Re-throw to let the form handle the error display
+      } finally {
+        hideLoading();
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editingEvent, sync, currentDateRange, loadEvents, errorService]
+  );
 
   const handleEventFormCancel = () => {
     setShowEventForm(false);
@@ -323,32 +407,34 @@ const AppContent: React.FC = () => {
   // Load address books using sync service
   const loadAddressBooks = async () => {
     try {
-      setContactsLoading(true);
+      showLoading("Loading address books...");
       await sync.syncAddressBooks();
-      
+
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
       setAddressBooks(cachedAddressBooks);
-      
+
       // Select the first address book by default if available
       if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
         setSelectedAddressBook(cachedAddressBooks[0]);
       }
     } catch (error) {
-      console.error('Error loading address books:', error);
-      
+      console.error("Error loading address books:", error);
+
       // Create retry function
       const retryAction = async () => {
         await loadAddressBooks();
       };
-      
+
       // Report error with retry option
       errorService.reportError(
-        `Failed to load address books: ${errorService.formatErrorMessage(error)}`,
-        'error',
+        `Failed to load address books: ${errorService.formatErrorMessage(
+          error
+        )}`,
+        "error",
         retryAction
       );
     } finally {
-      setContactsLoading(false);
+      hideLoading();
     }
   };
 
@@ -375,8 +461,12 @@ const AppContent: React.FC = () => {
   // Handle saving a contact (create or update)
   const handleContactSave = async (contactData: Contact) => {
     if (!selectedAddressBook) return;
-    
+
     try {
+      showLoading(
+        editingContact ? "Updating contact..." : "Creating contact..."
+      );
+
       if (editingContact) {
         // Update existing contact using sync service
         await sync.updateContact(selectedAddressBook, contactData);
@@ -384,28 +474,24 @@ const AppContent: React.FC = () => {
         // Create new contact using sync service
         await sync.createContact(selectedAddressBook, contactData);
       }
-      
+
       // Close form and reset state
       setShowContactForm(false);
       setEditingContact(null);
       setSelectedContact(null);
-      
-      // Force refresh the view
-      if (currentView === 'contacts') {
-        setContactsLoading(true);
-        setTimeout(() => setContactsLoading(false), 500);
-      }
     } catch (error) {
-      console.error('Error saving contact:', error);
-      
+      console.error("Error saving contact:", error);
+
       // Report error but don't throw it
       errorService.reportError(
         `Failed to save contact: ${errorService.formatErrorMessage(error)}`,
-        'error'
+        "error"
       );
-      
+
       // Don't close the form so the user can try again
       throw error; // Re-throw to let the form handle the error display
+    } finally {
+      hideLoading();
     }
   };
 
@@ -439,25 +525,25 @@ const AppContent: React.FC = () => {
   };
 
   const location = useLocation();
-  
+
   // Update current view based on location
   useEffect(() => {
-    if (location.pathname === '/calendar') {
-      setCurrentView('calendar');
-    } else if (location.pathname === '/contacts') {
-      setCurrentView('contacts');
+    if (location.pathname === "/calendar") {
+      setCurrentView("calendar");
+    } else if (location.pathname === "/contacts") {
+      setCurrentView("contacts");
     }
   }, [location.pathname]);
 
   // Setup component
   const SetupComponent = () => {
     const navigate = useNavigate();
-    
+
     const handleSetup = async (config: AuthConfig) => {
       await handleSetupComplete(config);
-      navigate('/calendar');
+      navigate("/calendar");
     };
-    
+
     return <SetupForm onSetupComplete={handleSetup} />;
   };
 
@@ -466,18 +552,17 @@ const AppContent: React.FC = () => {
     const Component = () => {
       return (
         <div className="view-container">
-          {calendarLoading && <LoadingIndicator overlay text="Loading calendar data..." />}
           <CalendarView
             calendars={calendars}
             events={events}
             onDateRangeChange={handleDateRangeChange}
             onEventClick={handleEventClick}
             onCreateEvent={handleCreateEvent}
-            loading={calendarLoading}
+            loading={false}
             currentDate={calendarCurrentDate}
             onDateChange={setCalendarCurrentDate}
           />
-          
+
           {/* Event Form Modal */}
           {showEventForm && (
             <EventForm
@@ -494,15 +579,24 @@ const AppContent: React.FC = () => {
       );
     };
     return Component;
-  }, [calendarCurrentDate, calendarLoading, calendars, editingEvent, events, handleCreateEvent, handleDateRangeChange, handleEventSave, initialDate, selectedCalendar, showEventForm]);
+  }, [
+    calendarCurrentDate,
+    calendars,
+    editingEvent,
+    events,
+    handleCreateEvent,
+    handleDateRangeChange,
+    handleEventSave,
+    initialDate,
+    selectedCalendar,
+    showEventForm,
+  ]);
 
   // Contacts component
   const ContactsComponent = () => {
     return (
       <div className="view-container">
         <div className="contacts-view">
-          {contactsLoading && <LoadingIndicator overlay text="Loading contacts..." />}
-          
           {addressBooks.length === 0 ? (
             <div className="no-address-books">
               <h2>No Address Books Found</h2>
@@ -513,22 +607,24 @@ const AppContent: React.FC = () => {
             <div className="contacts-container">
               <div className="address-book-selector">
                 <label htmlFor="address-book-select">Address Book:</label>
-                <select 
+                <select
                   id="address-book-select"
-                  value={selectedAddressBook?.url || ''}
+                  value={selectedAddressBook?.url || ""}
                   onChange={(e) => {
-                    const selected = addressBooks.find(ab => ab.url === e.target.value);
+                    const selected = addressBooks.find(
+                      (ab) => ab.url === e.target.value
+                    );
                     if (selected) handleAddressBookChange(selected);
                   }}
                 >
-                  {addressBooks.map(ab => (
+                  {addressBooks.map((ab) => (
                     <option key={ab.url} value={ab.url}>
                       {ab.displayName}
                     </option>
                   ))}
                 </select>
               </div>
-              
+
               <div className="contacts-layout">
                 {selectedAddressBook && (
                   <ContactList
@@ -538,7 +634,7 @@ const AppContent: React.FC = () => {
                     onAddContact={handleAddContact}
                   />
                 )}
-                
+
                 {selectedContact && !showContactForm && (
                   <ContactDetail
                     contact={selectedContact}
@@ -546,7 +642,7 @@ const AppContent: React.FC = () => {
                     onClose={() => setSelectedContact(null)}
                   />
                 )}
-                
+
                 {showContactForm && selectedAddressBook && (
                   <ContactForm
                     contact={editingContact || undefined}
@@ -564,10 +660,13 @@ const AppContent: React.FC = () => {
     );
   };
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="app-loading">
-        <LoadingIndicator size="large" text="Loading application..." />
+        <div className="loading-container">
+          <div className="loading-spinner large"></div>
+          <div className="loading-text">Loading application...</div>
+        </div>
       </div>
     );
   }
@@ -585,61 +684,91 @@ const AppContent: React.FC = () => {
   // Handle manual sync
   const handleManualSync = async () => {
     try {
+      showLoading("Syncing data...");
       await sync.fullSync({ forceRefresh: true });
-      
+
       // Update local state with fresh data
       const cachedCalendars = CacheService.getCachedCalendars();
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
-      
+
       setCalendars(cachedCalendars);
       setAddressBooks(cachedAddressBooks);
-      
+
       // Refresh current view
       if (currentDateRange) {
         await loadEvents(currentDateRange);
       }
     } catch (error) {
-      console.error('Manual sync failed:', error);
+      console.error("Manual sync failed:", error);
+    } finally {
+      hideLoading();
     }
   };
 
   return (
     <div className="app">
       {isAuthenticated && (
-        <NavigationWrapper 
+        <NavigationWrapper
           currentView={currentView}
           username={currentConfig?.username}
           onLogout={handleLogout}
         />
       )}
-      
+
       <main className="app-main">
         <Routes>
-          <Route path="/setup" element={
-            isAuthenticated ? <Navigate to="/calendar" replace /> : <SetupComponent />
-          } />
-          
-          <Route path="/calendar" element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <CalendarComponent />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/contacts" element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <ContactsComponent />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/" element={
-            isAuthenticated ? <Navigate to="/calendar" replace /> : <Navigate to="/setup" replace />
-          } />
+          <Route
+            path="/setup"
+            element={
+              isAuthenticated ? (
+                <Navigate to="/calendar" replace />
+              ) : (
+                <SetupComponent />
+              )
+            }
+          />
+
+          <Route
+            path="/calendar"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <CalendarComponent />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/contacts"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <ContactsComponent />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/"
+            element={
+              isAuthenticated ? (
+                <Navigate to="/calendar" replace />
+              ) : (
+                <Navigate to="/setup" replace />
+              )
+            }
+          />
         </Routes>
       </main>
-      
+
+      {/* Global Loading Overlay */}
+      <LoadingOverlay
+        isVisible={loadingState.isLoading}
+        text={loadingState.text}
+        size={loadingState.size}
+      />
+
       {/* Error message container */}
       <div className="error-container">
-        {errors.map(error => (
+        {errors.map((error) => (
           <ErrorMessage
             key={error.id}
             error={error}
@@ -648,14 +777,14 @@ const AppContent: React.FC = () => {
           />
         ))}
       </div>
-      
+
       {/* Offline indicator */}
       <OfflineIndicator />
-      
+
       {/* Sync status indicator */}
       {isAuthenticated && (
-        <SyncStatusIndicator 
-          syncService={syncService} 
+        <SyncStatusIndicator
+          syncService={syncService}
           onManualSync={handleManualSync}
         />
       )}
@@ -666,9 +795,11 @@ const AppContent: React.FC = () => {
 // Main App wrapper component
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <LoadingProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </LoadingProvider>
   );
 }
 

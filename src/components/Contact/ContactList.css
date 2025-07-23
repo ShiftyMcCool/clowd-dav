@@ -97,13 +97,7 @@
   color: #666;
 }
 
-.contact-list-loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #666;
-}
+
 
 .contact-list-error {
   display: flex;

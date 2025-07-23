@@ -1,0 +1,66 @@
+.loading-overlay-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: all;
+}
+
+.loading-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  min-width: 200px;
+  text-align: center;
+}
+
+.loading-overlay-content .loading-spinner {
+  border: 3px solid rgba(66, 133, 244, 0.2);
+  border-radius: 50%;
+  border-top: 3px solid #4285f4;
+  animation: loading-spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.loading-overlay-content .loading-spinner.small {
+  width: 24px;
+  height: 24px;
+}
+
+.loading-overlay-content .loading-spinner.medium {
+  width: 32px;
+  height: 32px;
+}
+
+.loading-overlay-content .loading-spinner.large {
+  width: 48px;
+  height: 48px;
+}
+
+.loading-overlay-content .loading-text {
+  color: #333;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+@keyframes loading-spin {
+  0% { 
+    transform: rotate(0deg); 
+  }
+  100% { 
+    transform: rotate(360deg); 
+  }
+}
