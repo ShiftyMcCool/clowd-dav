@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { AuthConfig } from '../types/auth';
-import { AuthManager } from '../services/AuthManager';
-import './SetupForm.css';
+import React, { useState, useEffect } from "react";
+import { AuthConfig } from "../types/auth";
+import { AuthManager } from "../services/AuthManager";
+import "./SetupForm.css";
 
 interface SetupFormProps {
   onSetupComplete: (config: AuthConfig, masterPassword?: string) => void;
@@ -25,47 +25,64 @@ interface ConnectionStatus {
   error?: string;
 }
 
-export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel }) => {
+type SetupStep = "login" | "server" | "credentials" | "options";
+
+export const SetupForm: React.FC<SetupFormProps> = ({
+  onSetupComplete,
+  onCancel,
+}) => {
+  const [currentStep, setCurrentStep] = useState<SetupStep>("login");
   const [formData, setFormData] = useState<FormData>({
-    caldavUrl: '',
-    carddavUrl: '',
-    username: '',
-    password: '',
-    masterPassword: '',
+    caldavUrl: "",
+    carddavUrl: "",
+    username: "",
+    password: "",
+    masterPassword: "",
     rememberCredentials: true,
-    persistSession: false
+    persistSession: false,
   });
 
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     testing: false,
-    success: null
+    success: null,
   });
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [hasStoredCredentials, setHasStoredCredentials] = useState(false);
 
   const authManager = AuthManager.getInstance();
 
   useEffect(() => {
     // Check if there are stored credentials
-    setHasStoredCredentials(authManager.hasStoredCredentials());
+    const hasStored = authManager.hasStoredCredentials();
+    setHasStoredCredentials(hasStored);
+    // If no stored credentials, skip to server setup
+    if (!hasStored) {
+      setCurrentStep("server");
+    }
   }, [authManager]);
 
-  const handleInputChange = (field: keyof FormData, value: string | boolean) => {
-    setFormData(prev => ({
+  const handleInputChange = (
+    field: keyof FormData,
+    value: string | boolean
+  ) => {
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
 
     // Auto-fill CardDAV URL if CalDAV URL is provided and CardDAV is empty
-    if (field === 'caldavUrl' && typeof value === 'string' && !formData.carddavUrl) {
+    if (
+      field === "caldavUrl" &&
+      typeof value === "string" &&
+      !formData.carddavUrl
+    ) {
       const caldavUrl = value;
-      if (caldavUrl.includes('/caldav/')) {
-        const carddavUrl = caldavUrl.replace('/caldav/', '/carddav/');
-        setFormData(prev => ({
+      if (caldavUrl.includes("/caldav/")) {
+        const carddavUrl = caldavUrl.replace("/caldav/", "/carddav/");
+        setFormData((prev) => ({
           ...prev,
-          carddavUrl
+          carddavUrl,
         }));
       }
     }
@@ -81,13 +98,13 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
       caldavUrl: formData.caldavUrl,
       carddavUrl: formData.carddavUrl,
       username: formData.username,
-      password: formData.password
+      password: formData.password,
     };
 
     const errors = authManager.validateCredentials(config);
-    
+
     if (formData.rememberCredentials && !formData.masterPassword) {
-      errors.push('Master password is required to save credentials');
+      errors.push("Master password is required to save credentials");
     }
 
     setValidationErrors(errors);
@@ -105,23 +122,24 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
       caldavUrl: formData.caldavUrl,
       carddavUrl: formData.carddavUrl,
       username: formData.username,
-      password: formData.password
+      password: formData.password,
     };
 
     try {
       const result = await authManager.testConnection(config);
-      
+
       setConnectionStatus({
         testing: false,
         success: result.success,
         provider: result.provider,
-        error: result.error
+        error: result.error,
       });
     } catch (error) {
       setConnectionStatus({
         testing: false,
         success: false,
-        error: error instanceof Error ? error.message : 'Connection test failed'
+        error:
+          error instanceof Error ? error.message : "Connection test failed",
       });
     }
   };
@@ -137,19 +155,34 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
       caldavUrl: formData.caldavUrl,
       carddavUrl: formData.carddavUrl,
       username: formData.username,
-      password: formData.password
+      password: formData.password,
     };
 
     try {
-      console.log('Form submission - rememberCredentials:', formData.rememberCredentials, 'persistSession:', formData.persistSession);
-      
+      console.log(
+        "Form submission - rememberCredentials:",
+        formData.rememberCredentials,
+        "persistSession:",
+        formData.persistSession
+      );
+
       // Store credentials if requested
       if (formData.rememberCredentials) {
-        console.log('Storing credentials with persistence:', formData.persistSession);
-        await authManager.storeCredentials(config, formData.masterPassword, formData.persistSession);
+        console.log(
+          "Storing credentials with persistence:",
+          formData.persistSession
+        );
+        await authManager.storeCredentials(
+          config,
+          formData.masterPassword,
+          formData.persistSession
+        );
         onSetupComplete(config, formData.masterPassword);
       } else {
-        console.log('Creating temporary session with persistence:', formData.persistSession);
+        console.log(
+          "Creating temporary session with persistence:",
+          formData.persistSession
+        );
         // Create a session without storing credentials permanently
         authManager.createSession(config, formData.persistSession);
         const sessionToken = authManager.getStoredSessionToken();
@@ -157,308 +190,411 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
       }
     } catch (error) {
       setValidationErrors([
-        error instanceof Error ? error.message : 'Failed to save credentials'
+        error instanceof Error ? error.message : "Failed to save credentials",
       ]);
     }
   };
 
   const loadStoredCredentials = async () => {
     if (!formData.masterPassword) {
-      setValidationErrors(['Master password is required to load stored credentials']);
+      setValidationErrors([
+        "Master password is required to load stored credentials",
+      ]);
       return;
     }
 
     try {
-      const credentials = await authManager.getStoredCredentials(formData.masterPassword);
+      const credentials = await authManager.getStoredCredentials(
+        formData.masterPassword
+      );
       if (credentials) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           caldavUrl: credentials.caldavUrl,
           carddavUrl: credentials.carddavUrl,
           username: credentials.username,
-          password: credentials.password
+          password: credentials.password,
         }));
         setValidationErrors([]);
       } else {
-        setValidationErrors(['Invalid master password or no stored credentials found']);
+        setValidationErrors([
+          "Invalid master password or no stored credentials found",
+        ]);
       }
     } catch (error) {
       setValidationErrors([
-        error instanceof Error ? error.message : 'Failed to load stored credentials'
+        error instanceof Error
+          ? error.message
+          : "Failed to load stored credentials",
       ]);
     }
   };
 
   const loginWithStoredCredentials = async () => {
     if (!formData.masterPassword) {
-      setValidationErrors(['Master password is required to login with stored credentials']);
+      setValidationErrors([
+        "Master password is required to login with stored credentials",
+      ]);
       return;
     }
 
     try {
-      const credentials = await authManager.getStoredCredentials(formData.masterPassword);
+      const credentials = await authManager.getStoredCredentials(
+        formData.masterPassword
+      );
       if (credentials) {
-        console.log('Login with stored credentials - persistSession:', formData.persistSession);
-        
+        console.log(
+          "Login with stored credentials - persistSession:",
+          formData.persistSession
+        );
+
         // Clear both storage locations first
-        localStorage.removeItem('caldav_persistent_session');
-        sessionStorage.removeItem('caldav_session_token');
-        
+        localStorage.removeItem("caldav_persistent_session");
+        sessionStorage.removeItem("caldav_session_token");
+
         // Create session based on user's current persistence preference
         if (formData.persistSession) {
-          console.log('Storing session token in localStorage (persistent)');
-          localStorage.setItem('caldav_persistent_session', formData.masterPassword);
+          console.log("Storing session token in localStorage (persistent)");
+          localStorage.setItem(
+            "caldav_persistent_session",
+            formData.masterPassword
+          );
         } else {
-          console.log('Storing session token in sessionStorage (page reload only)');
-          sessionStorage.setItem('caldav_session_token', formData.masterPassword);
+          console.log(
+            "Storing session token in sessionStorage (page reload only)"
+          );
+          sessionStorage.setItem(
+            "caldav_session_token",
+            formData.masterPassword
+          );
         }
-        
+
         onSetupComplete(credentials, formData.masterPassword);
       } else {
-        setValidationErrors(['Invalid master password or no stored credentials found']);
+        setValidationErrors([
+          "Invalid master password or no stored credentials found",
+        ]);
       }
     } catch (error) {
       setValidationErrors([
-        error instanceof Error ? error.message : 'Failed to login with stored credentials'
+        error instanceof Error
+          ? error.message
+          : "Failed to login with stored credentials",
       ]);
     }
   };
 
-  return (
-    <div className="setup-form-container">
-      <div className="setup-form">
-        <h2>CalDAV/CardDAV Server Setup</h2>
-        
+  const renderStepIndicator = () => (
+    <div className="step-indicator">
+      <div
+        className={`step ${
+          currentStep === "login"
+            ? "active"
+            : hasStoredCredentials
+            ? "completed"
+            : "disabled"
+        }`}
+      >
+        {hasStoredCredentials ? "1" : ""}
+      </div>
+      <div className={`step ${currentStep === "server" ? "active" : ""}`}>
+        {hasStoredCredentials ? "2" : "1"}
+      </div>
+      <div className={`step ${currentStep === "credentials" ? "active" : ""}`}>
+        {hasStoredCredentials ? "3" : "2"}
+      </div>
+    </div>
+  );
+
+  const renderLoginStep = () => (
+    <div className="setup-step">
+      <h2>Welcome Back</h2>
+      <p>Enter your master password to access stored credentials</p>
+
+      <div className="form-group">
+        <input
+          type="password"
+          value={formData.masterPassword}
+          onChange={(e) => handleInputChange("masterPassword", e.target.value)}
+          placeholder="Master password"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              loginWithStoredCredentials();
+            }
+          }}
+        />
+      </div>
+
+      <div className="form-group checkbox-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={formData.persistSession}
+            onChange={(e) =>
+              handleInputChange("persistSession", e.target.checked)
+            }
+          />
+          Keep me logged in
+        </label>
+      </div>
+
+      <div className="form-actions">
+        <button
+          type="button"
+          onClick={loginWithStoredCredentials}
+          className="btn-primary"
+        >
+          Login
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentStep("server")}
+          className="btn-link"
+        >
+          Use different server
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderServerStep = () => (
+    <div className="setup-step">
+      <h2>Server Configuration</h2>
+      <p>Enter your CalDAV/CardDAV server details</p>
+
+      <div className="form-group">
+        <label>CalDAV Server URL</label>
+        <input
+          type="url"
+          value={formData.caldavUrl}
+          onChange={(e) => handleInputChange("caldavUrl", e.target.value)}
+          placeholder="https://your-server.com/caldav/"
+        />
+      </div>
+
+      <div className="form-group">
+        <label>CardDAV Server URL</label>
+        <input
+          type="url"
+          value={formData.carddavUrl}
+          onChange={(e) => handleInputChange("carddavUrl", e.target.value)}
+          placeholder="https://your-server.com/carddav/"
+        />
+      </div>
+
+      <details className="server-examples">
+        <summary>Common server examples</summary>
+        <div className="examples-list">
+          <div>
+            <strong>Baikal:</strong> /baikal/cal.php/calendars/username/
+          </div>
+          <div>
+            <strong>Radicale:</strong> /username/
+          </div>
+          <div>
+            <strong>Nextcloud:</strong> /remote.php/dav/
+          </div>
+        </div>
+      </details>
+
+      <div className="form-actions">
+        <button
+          type="button"
+          onClick={() => setCurrentStep("credentials")}
+          className="btn-primary"
+          disabled={!formData.caldavUrl || !formData.carddavUrl}
+        >
+          Next
+        </button>
         {hasStoredCredentials && (
-          <div className="stored-credentials-section">
-            <h3>Login with Stored Credentials</h3>
-            <div className="form-group">
-              <label htmlFor="masterPassword">Master Password:</label>
-              <input
-                type="password"
-                id="masterPassword"
-                value={formData.masterPassword}
-                onChange={(e) => handleInputChange('masterPassword', e.target.value)}
-                placeholder="Enter master password"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    loginWithStoredCredentials();
-                  }
-                }}
-              />
-            </div>
-            
-            <div className="form-group checkbox-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={formData.persistSession}
-                  onChange={(e) => handleInputChange('persistSession', e.target.checked)}
-                />
-                Keep me logged in (survives browser restart)
-              </label>
-            </div>
-
-            <div className="stored-credentials-actions">
-              <button 
-                type="button" 
-                onClick={loginWithStoredCredentials}
-                className="btn-primary"
-              >
-                Login
-              </button>
-              <button 
-                type="button" 
-                onClick={loadStoredCredentials}
-                className="btn-secondary"
-              >
-                Load & Edit Credentials
-              </button>
-            </div>
-            <div className="divider">OR</div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setCurrentStep("login")}
+            className="btn-secondary"
+          >
+            Back
+          </button>
         )}
+      </div>
+    </div>
+  );
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="caldavUrl">CalDAV Server URL:</label>
-            <input
-              type="url"
-              id="caldavUrl"
-              value={formData.caldavUrl}
-              onChange={(e) => handleInputChange('caldavUrl', e.target.value)}
-              placeholder="https://your-server.com/caldav/"
-              required
-            />
-          </div>
+  const renderCredentialsStep = () => (
+    <div className="setup-step">
+      <h2>Account Credentials</h2>
+      <p>Enter your username and password</p>
 
-          <div className="form-group">
-            <label htmlFor="carddavUrl">CardDAV Server URL:</label>
-            <input
-              type="url"
-              id="carddavUrl"
-              value={formData.carddavUrl}
-              onChange={(e) => handleInputChange('carddavUrl', e.target.value)}
-              placeholder="https://your-server.com/carddav/"
-              required
-            />
-          </div>
+      <div className="form-group">
+        <label>Username</label>
+        <input
+          type="text"
+          value={formData.username}
+          onChange={(e) => handleInputChange("username", e.target.value)}
+          placeholder="Your username"
+        />
+      </div>
 
-          <div className="form-group">
-            <label htmlFor="username">Username:</label>
-            <input
-              type="text"
-              id="username"
-              value={formData.username}
-              onChange={(e) => handleInputChange('username', e.target.value)}
-              placeholder="Your username"
-              required
-            />
-          </div>
+      <div className="form-group">
+        <label>Password</label>
+        <input
+          type="password"
+          value={formData.password}
+          onChange={(e) => handleInputChange("password", e.target.value)}
+          placeholder="Your password"
+        />
+      </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password:</label>
-            <input
-              type="password"
-              id="password"
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-              placeholder="Your password"
-              required
-            />
-          </div>
+      {connectionStatus.testing && (
+        <div className="connection-status testing">Testing connection...</div>
+      )}
 
+      {connectionStatus.success === true && (
+        <div className="connection-status success">
+          ✓ Connection successful!
+          {connectionStatus.provider && (
+            <span> ({connectionStatus.provider})</span>
+          )}
+        </div>
+      )}
+
+      {connectionStatus.success === false && (
+        <div className="connection-status error">
+          ✗ {connectionStatus.error}
+        </div>
+      )}
+
+      <div className="form-actions">
+        <button
+          type="button"
+          onClick={testConnection}
+          className="btn-secondary"
+          disabled={
+            !formData.username || !formData.password || connectionStatus.testing
+          }
+        >
+          Test Connection
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentStep("options")}
+          className="btn-primary"
+          disabled={!formData.username || !formData.password}
+        >
+          Next
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentStep("server")}
+          className="btn-secondary"
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderOptionsStep = () => (
+    <div className="setup-step">
+      <h2>Security Options</h2>
+      <p>Choose how to handle your credentials</p>
+
+      <div className="options-grid">
+        <div className="option-card">
           <div className="form-group checkbox-group">
             <label>
               <input
                 type="checkbox"
                 checked={formData.rememberCredentials}
-                onChange={(e) => handleInputChange('rememberCredentials', e.target.checked)}
+                onChange={(e) =>
+                  handleInputChange("rememberCredentials", e.target.checked)
+                }
               />
-              Remember credentials securely in browser
+              <strong>Remember credentials</strong>
             </label>
+            <small>Securely store credentials in browser</small>
           </div>
+        </div>
 
+        <div className="option-card">
           <div className="form-group checkbox-group">
             <label>
               <input
                 type="checkbox"
                 checked={formData.persistSession}
-                onChange={(e) => handleInputChange('persistSession', e.target.checked)}
+                onChange={(e) =>
+                  handleInputChange("persistSession", e.target.checked)
+                }
               />
-              Keep me logged in (survives browser restart)
+              <strong>Stay logged in</strong>
             </label>
-            <small className="help-text">
-              When enabled, you'll stay logged in even after closing the browser
-            </small>
+            <small>Survive browser restarts</small>
           </div>
-
-          {formData.rememberCredentials && (
-            <div className="form-group">
-              <label htmlFor="newMasterPassword">Master Password:</label>
-              <input
-                type="password"
-                id="newMasterPassword"
-                value={formData.masterPassword}
-                onChange={(e) => handleInputChange('masterPassword', e.target.value)}
-                placeholder="Create a master password"
-                required={formData.rememberCredentials}
-              />
-              <small className="help-text">
-                This password will be used to encrypt your credentials locally
-              </small>
-            </div>
-          )}
-
-          {validationErrors.length > 0 && (
-            <div className="error-messages">
-              {validationErrors.map((error, index) => (
-                <div key={index} className="error-message">{error}</div>
-              ))}
-            </div>
-          )}
-
-          <div className="connection-test-section">
-            <button 
-              type="button" 
-              onClick={testConnection}
-              disabled={connectionStatus.testing}
-              className="btn-secondary"
-            >
-              {connectionStatus.testing ? 'Testing Connection...' : 'Test Connection'}
-            </button>
-
-            {connectionStatus.success === true && (
-              <div className="success-message">
-                ✓ Connection successful! 
-                {connectionStatus.provider && (
-                  <span> Detected server: {connectionStatus.provider}</span>
-                )}
-              </div>
-            )}
-
-            {connectionStatus.success === false && (
-              <div className="error-message">
-                ✗ Connection failed: {connectionStatus.error}
-              </div>
-            )}
-          </div>
-
-          <div className="form-actions">
-            <button 
-              type="submit" 
-              className="btn-primary"
-              disabled={connectionStatus.testing}
-            >
-              Connect
-            </button>
-            {onCancel && (
-              <button 
-                type="button" 
-                onClick={onCancel}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-
-        <div className="advanced-section">
-          <button 
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="btn-link"
-          >
-            {showAdvanced ? 'Hide' : 'Show'} Advanced Options
-          </button>
-
-          {showAdvanced && (
-            <div className="advanced-options">
-              <h3>Server Examples</h3>
-              <div className="server-examples">
-                <div className="example">
-                  <strong>Baikal:</strong>
-                  <div>CalDAV: https://your-server.com/baikal/cal.php/calendars/username/</div>
-                  <div>CardDAV: https://your-server.com/baikal/card.php/addressbooks/username/</div>
-                </div>
-                <div className="example">
-                  <strong>Radicale:</strong>
-                  <div>CalDAV: https://your-server.com/username/</div>
-                  <div>CardDAV: https://your-server.com/username/</div>
-                </div>
-              </div>
-              
-              <div className="help-text">
-                <p>
-                  <strong>Note:</strong> This application connects directly to your DAV server.
-                  Make sure your server supports CORS or use a proxy if needed.
-                </p>
-              </div>
-            </div>
-          )}
         </div>
+      </div>
+
+      {formData.rememberCredentials && (
+        <div className="form-group">
+          <label>Master Password</label>
+          <input
+            type="password"
+            value={formData.masterPassword}
+            onChange={(e) =>
+              handleInputChange("masterPassword", e.target.value)
+            }
+            placeholder="Create a master password"
+          />
+          <small>Used to encrypt your stored credentials</small>
+        </div>
+      )}
+
+      <div className="form-actions">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="btn-primary"
+          disabled={formData.rememberCredentials && !formData.masterPassword}
+        >
+          Connect
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentStep("credentials")}
+          className="btn-secondary"
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="setup-form-container">
+      <div className="setup-form">
+        {hasStoredCredentials && renderStepIndicator()}
+
+        {validationErrors.length > 0 && (
+          <div className="error-messages">
+            {validationErrors.map((error, index) => (
+              <div key={index} className="error-message">
+                {error}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {currentStep === "login" && hasStoredCredentials && renderLoginStep()}
+        {currentStep === "server" && renderServerStep()}
+        {currentStep === "credentials" && renderCredentialsStep()}
+        {currentStep === "options" && renderOptionsStep()}
+
+        {onCancel && (
+          <div className="cancel-action">
+            <button onClick={onCancel} className="btn-link">
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
