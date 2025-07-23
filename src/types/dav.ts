@@ -6,6 +6,7 @@ export interface CalendarEvent {
   dtend: Date;
   location?: string;
   etag?: string;
+  calendarUrl?: string; // Track which calendar this event belongs to
 }
 
 export interface Contact {

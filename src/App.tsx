@@ -336,6 +336,15 @@ const AppContent: React.FC = () => {
 
   const handleEventClick = (event: CalendarEvent) => {
     setEditingEvent(event);
+    
+    // Find the calendar this event belongs to
+    if (event.calendarUrl) {
+      const eventCalendar = calendars.find(cal => cal.url === event.calendarUrl);
+      if (eventCalendar) {
+        setSelectedCalendar(eventCalendar);
+      }
+    }
+    
     setShowEventForm(true);
   };
 

@@ -136,7 +136,12 @@ export class SyncService {
         
         if (shouldSync) {
           const events = await this.davClient.getEvents(calendar, defaultDateRange);
-          CacheService.storeCachedEvents(calendar.url, events);
+          // Add calendar URL to each event
+          const eventsWithCalendar = events.map(event => ({
+            ...event,
+            calendarUrl: calendar.url
+          }));
+          CacheService.storeCachedEvents(calendar.url, eventsWithCalendar);
           CacheService.updateLastSync(calendar.url);
           updated += events.length;
         }
@@ -379,9 +384,14 @@ export class SyncService {
     if (navigator.onLine) {
       try {
         const events = await this.davClient.getEvents(calendar, dateRange);
-        CacheService.storeCachedEvents(calendar.url, events);
+        // Add calendar URL to each event
+        const eventsWithCalendar = events.map(event => ({
+          ...event,
+          calendarUrl: calendar.url
+        }));
+        CacheService.storeCachedEvents(calendar.url, eventsWithCalendar);
         CacheService.updateLastSync(calendar.url);
-        return events;
+        return eventsWithCalendar;
       } catch (error) {
         console.warn('Failed to fetch events from server, falling back to cache:', error);
       }
@@ -389,7 +399,12 @@ export class SyncService {
 
     // Fallback to cache
     const cachedEvents = CacheService.getCachedEvents(calendar.url);
-    return cachedEvents?.events || [];
+    const events = cachedEvents?.events || [];
+    // Ensure calendar URL is set for cached events
+    return events.map(event => ({
+      ...event,
+      calendarUrl: event.calendarUrl || calendar.url
+    }));
   }
 
   /**

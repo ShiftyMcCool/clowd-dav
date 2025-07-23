@@ -50,6 +50,11 @@ export const EventForm: React.FC<EventFormProps> = ({
         endDate: endDate.toISOString().split('T')[0],
         endTime: endDate.toTimeString().slice(0, 5)
       });
+
+      // Set the selected calendar URL for editing
+      if (event.calendarUrl) {
+        setSelectedCalendarUrl(event.calendarUrl);
+      }
     } else {
       // Creating new event with default times
       const baseDate = initialDate || new Date();
@@ -147,7 +152,7 @@ export const EventForm: React.FC<EventFormProps> = ({
       newErrors.endTime = 'End time is required';
     }
 
-    if (!selectedCalendarUrl && !isEditing) {
+    if (!selectedCalendarUrl) {
       newErrors.calendar = 'Please select a calendar';
     }
 
@@ -337,43 +342,31 @@ export const EventForm: React.FC<EventFormProps> = ({
             )}
           </div>
 
-          {/* Calendar Selection (only for new events) */}
-          {!isEditing && (
-            <div className="form-group">
-              <label htmlFor="calendar">Calendar *</label>
-              <select
-                id="calendar"
-                value={selectedCalendarUrl}
-                onChange={(e) => setSelectedCalendarUrl(e.target.value)}
-                className={errors.calendar ? 'error' : ''}
-                disabled={isSubmitting}
-                aria-describedby={errors.calendar ? 'calendar-error' : undefined}
-                aria-invalid={!!errors.calendar}
-              >
-                <option value="">Select a calendar</option>
-                {calendars.map(calendar => (
-                  <option key={calendar.url} value={calendar.url}>
-                    {calendar.displayName}
-                  </option>
-                ))}
-              </select>
-              {errors.calendar && (
-                <span id="calendar-error" className="error-message" role="alert">
-                  {errors.calendar}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Show selected calendar for editing */}
-          {isEditing && currentSelectedCalendar && (
-            <div className="form-group">
-              <label>Calendar</label>
-              <div className="readonly-field">
-                {currentSelectedCalendar.displayName}
-              </div>
-            </div>
-          )}
+          {/* Calendar Selection */}
+          <div className="form-group">
+            <label htmlFor="calendar">Calendar *</label>
+            <select
+              id="calendar"
+              value={selectedCalendarUrl}
+              onChange={(e) => setSelectedCalendarUrl(e.target.value)}
+              className={errors.calendar ? 'error' : ''}
+              disabled={isSubmitting}
+              aria-describedby={errors.calendar ? 'calendar-error' : undefined}
+              aria-invalid={!!errors.calendar}
+            >
+              <option value="">Select a calendar</option>
+              {calendars.map(calendar => (
+                <option key={calendar.url} value={calendar.url}>
+                  {calendar.displayName}
+                </option>
+              ))}
+            </select>
+            {errors.calendar && (
+              <span id="calendar-error" className="error-message" role="alert">
+                {errors.calendar}
+              </span>
+            )}
+          </div>
 
           {/* Date and Time */}
           <div className="form-row">
