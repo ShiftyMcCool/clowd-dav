@@ -27,7 +27,15 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:staging": "env-cmd -f .env.staging react-scripts build",
+    "build:production": "env-cmd -f .env.production react-scripts build",
     "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "analyze": "npm run build && npx serve -s build",
+    "docker:build": "docker build -t caldav-carddav-client .",
+    "docker:run": "docker run -p 80:80 caldav-carddav-client",
+    "docker:build-staging": "docker build -t caldav-carddav-client:staging --build-arg REACT_APP_ENVIRONMENT=staging .",
+    "docker:build-production": "docker build -t caldav-carddav-client:production --build-arg REACT_APP_ENVIRONMENT=production .",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -55,6 +63,7 @@
     ]
   },
   "devDependencies": {
-    "@xmldom/xmldom": "^0.9.8"
+    "@xmldom/xmldom": "^0.9.8",
+    "env-cmd": "^10.1.0"
   }
 }

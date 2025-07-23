@@ -4,6 +4,8 @@ import React, {
   useCallback,
   useRef,
   useMemo,
+  Suspense,
+  lazy,
 } from "react";
 import {
   BrowserRouter as Router,
@@ -13,10 +15,6 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import { SetupForm } from "./components/SetupForm";
-import { CalendarView } from "./components/Calendar/CalendarView";
-import { EventForm } from "./components/Calendar/EventForm";
-import { ContactList, ContactDetail, ContactForm } from "./components/Contact";
 import { Navigation } from "./components/Navigation";
 import {
   LoadingOverlay,
@@ -44,6 +42,14 @@ import {
 } from "./services/ErrorHandlingService";
 import { useSync } from "./hooks/useSync";
 import "./App.css";
+
+// Lazy load components for code splitting
+const SetupForm = lazy(() => import("./components/SetupForm").then(module => ({ default: module.SetupForm })));
+const CalendarView = lazy(() => import("./components/Calendar/CalendarView").then(module => ({ default: module.CalendarView })));
+const EventForm = lazy(() => import("./components/Calendar/EventForm").then(module => ({ default: module.EventForm })));
+const ContactList = lazy(() => import("./components/Contact").then(module => ({ default: module.ContactList })));
+const ContactDetail = lazy(() => import("./components/Contact").then(module => ({ default: module.ContactDetail })));
+const ContactForm = lazy(() => import("./components/Contact").then(module => ({ default: module.ContactForm })));
 
 // Protected route component
 const ProtectedRoute: React.FC<{
@@ -625,38 +631,46 @@ const AppContent: React.FC = () => {
       navigate("/calendar");
     };
 
-    return <SetupForm onSetupComplete={handleSetup} />;
+    return (
+      <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><div className="loading-text">Loading...</div></div>}>
+        <SetupForm onSetupComplete={handleSetup} />
+      </Suspense>
+    );
   };
 
   // Calendar component - using useMemo to prevent recreation
   const CalendarComponent = useMemo(() => {
     const Component = () => {
       return (
-        <div className="view-container">
-          <CalendarView
-            calendars={calendars}
-            events={events}
-            onDateRangeChange={handleDateRangeChange}
-            onEventClick={handleEventClick}
-            onCreateEvent={handleCreateEvent}
-            loading={false}
-            currentDate={calendarCurrentDate}
-            onDateChange={setCalendarCurrentDate}
-          />
-
-          {/* Event Form Modal */}
-          {showEventForm && (
-            <EventForm
-              event={editingEvent || undefined}
+        <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><div className="loading-text">Loading calendar...</div></div>}>
+          <div className="view-container">
+            <CalendarView
               calendars={calendars}
-              selectedCalendar={selectedCalendar || undefined}
-              onSave={handleEventSave}
-              onCancel={handleEventFormCancel}
-              isEditing={!!editingEvent}
-              initialDate={initialDate}
+              events={events}
+              onDateRangeChange={handleDateRangeChange}
+              onEventClick={handleEventClick}
+              onCreateEvent={handleCreateEvent}
+              loading={false}
+              currentDate={calendarCurrentDate}
+              onDateChange={setCalendarCurrentDate}
             />
-          )}
-        </div>
+
+            {/* Event Form Modal */}
+            {showEventForm && (
+              <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><div className="loading-text">Loading form...</div></div>}>
+                <EventForm
+                  event={editingEvent || undefined}
+                  calendars={calendars}
+                  selectedCalendar={selectedCalendar || undefined}
+                  onSave={handleEventSave}
+                  onCancel={handleEventFormCancel}
+                  isEditing={!!editingEvent}
+                  initialDate={initialDate}
+                />
+              </Suspense>
+            )}
+          </div>
+        </Suspense>
       );
     };
     return Component;
@@ -677,68 +691,76 @@ const AppContent: React.FC = () => {
   // Contacts component
   const ContactsComponent = () => {
     return (
-      <div className="view-container">
-        <div className="contacts-view">
-          {addressBooks.length === 0 ? (
-            <div className="no-address-books">
-              <h2>No Address Books Found</h2>
-              <p>No address books were found on your CardDAV server.</p>
-              <button onClick={loadAddressBooks}>Refresh</button>
-            </div>
-          ) : (
-            <div className="contacts-container">
-              <div className="address-book-selector">
-                <label htmlFor="address-book-select">Address Book:</label>
-                <select
-                  id="address-book-select"
-                  value={selectedAddressBook?.url || ""}
-                  onChange={(e) => {
-                    const selected = addressBooks.find(
-                      (ab) => ab.url === e.target.value
-                    );
-                    if (selected) handleAddressBookChange(selected);
-                  }}
-                >
-                  {addressBooks.map((ab) => (
-                    <option key={ab.url} value={ab.url}>
-                      {ab.displayName}
-                    </option>
-                  ))}
-                </select>
+      <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><div className="loading-text">Loading contacts...</div></div>}>
+        <div className="view-container">
+          <div className="contacts-view">
+            {addressBooks.length === 0 ? (
+              <div className="no-address-books">
+                <h2>No Address Books Found</h2>
+                <p>No address books were found on your CardDAV server.</p>
+                <button onClick={loadAddressBooks}>Refresh</button>
               </div>
+            ) : (
+              <div className="contacts-container">
+                <div className="address-book-selector">
+                  <label htmlFor="address-book-select">Address Book:</label>
+                  <select
+                    id="address-book-select"
+                    value={selectedAddressBook?.url || ""}
+                    onChange={(e) => {
+                      const selected = addressBooks.find(
+                        (ab) => ab.url === e.target.value
+                      );
+                      if (selected) handleAddressBookChange(selected);
+                    }}
+                  >
+                    {addressBooks.map((ab) => (
+                      <option key={ab.url} value={ab.url}>
+                        {ab.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="contacts-layout">
-                {selectedAddressBook && (
-                  <ContactList
-                    addressBook={selectedAddressBook}
-                    syncService={syncService}
-                    onContactSelect={handleContactSelect}
-                    onAddContact={handleAddContact}
-                  />
-                )}
+                <div className="contacts-layout">
+                  {selectedAddressBook && (
+                    <Suspense fallback={<div className="loading-spinner"></div>}>
+                      <ContactList
+                        addressBook={selectedAddressBook}
+                        syncService={syncService}
+                        onContactSelect={handleContactSelect}
+                        onAddContact={handleAddContact}
+                      />
+                    </Suspense>
+                  )}
 
-                {selectedContact && !showContactForm && (
-                  <ContactDetail
-                    contact={selectedContact}
-                    onEdit={() => handleEditContact(selectedContact)}
-                    onClose={() => setSelectedContact(null)}
-                  />
-                )}
+                  {selectedContact && !showContactForm && (
+                    <Suspense fallback={<div className="loading-spinner"></div>}>
+                      <ContactDetail
+                        contact={selectedContact}
+                        onEdit={() => handleEditContact(selectedContact)}
+                        onClose={() => setSelectedContact(null)}
+                      />
+                    </Suspense>
+                  )}
 
-                {showContactForm && selectedAddressBook && (
-                  <ContactForm
-                    contact={editingContact || undefined}
-                    addressBook={selectedAddressBook}
-                    davClient={davClient}
-                    onSave={handleContactSave}
-                    onCancel={handleContactFormCancel}
-                  />
-                )}
+                  {showContactForm && selectedAddressBook && (
+                    <Suspense fallback={<div className="loading-spinner"></div>}>
+                      <ContactForm
+                        contact={editingContact || undefined}
+                        addressBook={selectedAddressBook}
+                        davClient={davClient}
+                        onSave={handleContactSave}
+                        onCancel={handleContactFormCancel}
+                      />
+                    </Suspense>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      </Suspense>
     );
   };
 
