@@ -631,6 +631,69 @@ export class DAVClient implements IDAVClient {
   }
 
   /**
+   * Delete an existing calendar event using DELETE request with ETag handling
+   * Implements CalDAV event deletion protocol with conflict detection
+   */
+  public async deleteEvent(
+    calendar: Calendar,
+    event: CalendarEvent
+  ): Promise<void> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before deleting events."
+      );
+    }
+
+    // Generate event URL
+    const eventUrl = this.generateEventUrl(calendar, event);
+
+    try {
+      // DELETE request with optional If-Match header for conflict detection
+      const headers: Record<string, string> = {};
+      if (event.etag) {
+        headers["If-Match"] = `"${event.etag}"`;
+      }
+
+      const response = await this.delete(eventUrl, headers);
+
+      // Check if deletion was successful (200 OK, 204 No Content, or 404 Not Found)
+      if (response.status !== 200 && response.status !== 204 && response.status !== 404) {
+        if (response.status === 412) {
+          throw new Error(
+            "Event deletion conflict: The event has been modified by another client. Please refresh and try again."
+          );
+        }
+        throw new Error(`Event deletion failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's already a conflict error, re-throw as is
+        if (error.message.includes("Event deletion conflict")) {
+          throw error;
+        }
+        // Handle 412 Precondition Failed specifically
+        if (error.message.includes("Server error (412)")) {
+          throw new Error(
+            "Event deletion conflict: The event has been modified by another client. Please refresh and try again."
+          );
+        }
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Event deletion failed: ${error.message}`);
+        }
+        throw new Error(`Event deletion failed: ${error.message}`);
+      }
+      throw new Error("Event deletion failed: Unknown error");
+    }
+  }
+
+  /**
    * Create a new contact using PUT request with vCard data
    * Implements CardDAV contact creation protocol
    */

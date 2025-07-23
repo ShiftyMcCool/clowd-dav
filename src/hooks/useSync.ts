@@ -13,6 +13,7 @@ export interface UseSyncReturn {
   syncContacts: (forceRefresh?: boolean) => Promise<void>;
   createEvent: (calendar: Calendar, event: CalendarEvent) => Promise<void>;
   updateEvent: (calendar: Calendar, event: CalendarEvent) => Promise<void>;
+  deleteEvent: (calendar: Calendar, event: CalendarEvent) => Promise<void>;
   createContact: (addressBook: AddressBook, contact: Contact) => Promise<void>;
   updateContact: (addressBook: AddressBook, contact: Contact) => Promise<void>;
   getEvents: (calendar: Calendar, dateRange: DateRange) => Promise<CalendarEvent[]>;
@@ -100,6 +101,10 @@ export const useSync = (syncService: SyncService): UseSyncReturn => {
     await handleAsyncOperation(() => syncService.updateEvent(calendar, event));
   }, [syncService, handleAsyncOperation]);
 
+  const deleteEvent = useCallback(async (calendar: Calendar, event: CalendarEvent): Promise<void> => {
+    await handleAsyncOperation(() => syncService.deleteEvent(calendar, event));
+  }, [syncService, handleAsyncOperation]);
+
   const createContact = useCallback(async (addressBook: AddressBook, contact: Contact): Promise<void> => {
     await handleAsyncOperation(() => syncService.createContact(addressBook, contact));
   }, [syncService, handleAsyncOperation]);
@@ -127,6 +132,7 @@ export const useSync = (syncService: SyncService): UseSyncReturn => {
     syncContacts,
     createEvent,
     updateEvent,
+    deleteEvent,
     createContact,
     updateContact,
     getEvents,

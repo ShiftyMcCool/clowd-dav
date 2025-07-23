@@ -334,19 +334,21 @@ const AppContent: React.FC = () => {
     [loadEvents]
   );
 
-  const handleEventClick = (event: CalendarEvent) => {
+  const handleEventClick = useCallback((event: CalendarEvent) => {
     setEditingEvent(event);
-    
+
     // Find the calendar this event belongs to
     if (event.calendarUrl) {
-      const eventCalendar = calendars.find(cal => cal.url === event.calendarUrl);
+      const eventCalendar = calendars.find(
+        (cal) => cal.url === event.calendarUrl
+      );
       if (eventCalendar) {
         setSelectedCalendar(eventCalendar);
       }
     }
-    
+
     setShowEventForm(true);
-  };
+  }, [calendars]);
 
   const handleCreateEvent = useCallback(
     (date: Date) => {
@@ -370,11 +372,37 @@ const AppContent: React.FC = () => {
         showLoading(editingEvent ? "Updating event..." : "Creating event...");
 
         if (editingEvent) {
-          // Update existing event using sync service
-          await sync.updateEvent(calendar, eventData);
+          // Check if the calendar has changed (moving event to different calendar)
+          const originalCalendarUrl = editingEvent.calendarUrl;
+          const newCalendarUrl = calendar.url;
+
+          if (originalCalendarUrl && originalCalendarUrl !== newCalendarUrl) {
+            // Moving event to different calendar: delete from original, create in new
+            showLoading("Moving event to different calendar...");
+
+            // Find the original calendar
+            const originalCalendar = calendars.find(
+              (cal) => cal.url === originalCalendarUrl
+            );
+            if (originalCalendar) {
+              // Delete from original calendar
+              await sync.deleteEvent(originalCalendar, editingEvent);
+            }
+
+            // Create in new calendar with new calendar URL
+            const eventWithNewCalendar = {
+              ...eventData,
+              calendarUrl: newCalendarUrl,
+            };
+            await sync.createEvent(calendar, eventWithNewCalendar);
+          } else {
+            // Same calendar: just update
+            await sync.updateEvent(calendar, eventData);
+          }
         } else {
           // Create new event using sync service
-          await sync.createEvent(calendar, eventData);
+          const eventWithCalendar = { ...eventData, calendarUrl: calendar.url };
+          await sync.createEvent(calendar, eventWithCalendar);
         }
 
         // Refresh events after successful save
@@ -595,6 +623,7 @@ const AppContent: React.FC = () => {
     events,
     handleCreateEvent,
     handleDateRangeChange,
+    handleEventClick,
     handleEventSave,
     initialDate,
     selectedCalendar,

@@ -211,7 +211,7 @@ export const EventForm: React.FC<EventFormProps> = ({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, selectedCalendarUrl, isEditing]);
+  }, [formData, selectedCalendarUrl]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,7 +240,7 @@ export const EventForm: React.FC<EventFormProps> = ({
       };
 
       // Find selected calendar
-      const calendar = currentSelectedCalendar;
+      const calendar = calendars.find(cal => cal.url === selectedCalendarUrl);
       if (!calendar) {
         throw new Error('Selected calendar not found');
       }
@@ -274,7 +274,7 @@ export const EventForm: React.FC<EventFormProps> = ({
     }
   }, [validateForm, formData, event, calendars, selectedCalendarUrl, onSave]);
 
-  const currentSelectedCalendar = calendars.find(cal => cal.url === selectedCalendarUrl);
+
 
   // Handle keyboard shortcuts
   useEffect(() => {

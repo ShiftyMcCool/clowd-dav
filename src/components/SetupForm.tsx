@@ -48,7 +48,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({ onSetupComplete, onCancel 
   useEffect(() => {
     // Check if there are stored credentials
     setHasStoredCredentials(authManager.hasStoredCredentials());
-  }, []);
+  }, [authManager]);
 
   const handleInputChange = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({

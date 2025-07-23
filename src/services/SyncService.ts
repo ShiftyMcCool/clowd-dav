@@ -204,14 +204,17 @@ export class SyncService {
    * Creates an event with offline support
    */
   async createEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
+    // Ensure the event has the correct calendar URL
+    const eventWithCalendar = { ...event, calendarUrl: calendar.url };
+    
     if (navigator.onLine) {
       try {
-        await this.davClient.createEvent(calendar, event);
+        await this.davClient.createEvent(calendar, eventWithCalendar);
         
         // Update cache immediately
         const cachedEvents = CacheService.getCachedEvents(calendar.url);
         if (cachedEvents) {
-          cachedEvents.events.push(event);
+          cachedEvents.events.push(eventWithCalendar);
           CacheService.storeCachedEvents(calendar.url, cachedEvents.events, cachedEvents.etag);
         }
       } catch (error) {
@@ -220,7 +223,7 @@ export class SyncService {
           type: 'create',
           resourceType: 'event',
           resourceUrl: calendar.url,
-          data: event
+          data: eventWithCalendar
         });
         throw error;
       }
@@ -230,12 +233,12 @@ export class SyncService {
         type: 'create',
         resourceType: 'event',
         resourceUrl: calendar.url,
-        data: event
+        data: eventWithCalendar
       });
 
       const cachedEvents = CacheService.getCachedEvents(calendar.url);
       if (cachedEvents) {
-        cachedEvents.events.push(event);
+        cachedEvents.events.push(eventWithCalendar);
         CacheService.storeCachedEvents(calendar.url, cachedEvents.events, cachedEvents.etag);
       }
     }
@@ -245,16 +248,19 @@ export class SyncService {
    * Updates an event with offline support
    */
   async updateEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
+    // Ensure the event has the correct calendar URL
+    const eventWithCalendar = { ...event, calendarUrl: calendar.url };
+    
     if (navigator.onLine) {
       try {
-        await this.davClient.updateEvent(calendar, event);
+        await this.davClient.updateEvent(calendar, eventWithCalendar);
         
         // Update cache immediately
         const cachedEvents = CacheService.getCachedEvents(calendar.url);
         if (cachedEvents) {
           const index = cachedEvents.events.findIndex(e => e.uid === event.uid);
           if (index !== -1) {
-            cachedEvents.events[index] = event;
+            cachedEvents.events[index] = eventWithCalendar;
             CacheService.storeCachedEvents(calendar.url, cachedEvents.events, cachedEvents.etag);
           }
         }
@@ -264,7 +270,7 @@ export class SyncService {
           type: 'update',
           resourceType: 'event',
           resourceUrl: calendar.url,
-          data: event
+          data: eventWithCalendar
         });
         throw error;
       }
@@ -274,16 +280,57 @@ export class SyncService {
         type: 'update',
         resourceType: 'event',
         resourceUrl: calendar.url,
-        data: event
+        data: eventWithCalendar
       });
 
       const cachedEvents = CacheService.getCachedEvents(calendar.url);
       if (cachedEvents) {
         const index = cachedEvents.events.findIndex(e => e.uid === event.uid);
         if (index !== -1) {
-          cachedEvents.events[index] = event;
+          cachedEvents.events[index] = eventWithCalendar;
           CacheService.storeCachedEvents(calendar.url, cachedEvents.events, cachedEvents.etag);
         }
+      }
+    }
+  }
+
+  /**
+   * Deletes an event with offline support
+   */
+  async deleteEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
+    if (navigator.onLine) {
+      try {
+        await this.davClient.deleteEvent(calendar, event);
+        
+        // Remove from cache immediately
+        const cachedEvents = CacheService.getCachedEvents(calendar.url);
+        if (cachedEvents) {
+          const filteredEvents = cachedEvents.events.filter(e => e.uid !== event.uid);
+          CacheService.storeCachedEvents(calendar.url, filteredEvents, cachedEvents.etag);
+        }
+      } catch (error) {
+        // If online but failed, add to pending operations
+        CacheService.addPendingOperation({
+          type: 'delete',
+          resourceType: 'event',
+          resourceUrl: calendar.url,
+          data: event
+        });
+        throw error;
+      }
+    } else {
+      // Offline: add to pending operations and update cache optimistically
+      CacheService.addPendingOperation({
+        type: 'delete',
+        resourceType: 'event',
+        resourceUrl: calendar.url,
+        data: event
+      });
+
+      const cachedEvents = CacheService.getCachedEvents(calendar.url);
+      if (cachedEvents) {
+        const filteredEvents = cachedEvents.events.filter(e => e.uid !== event.uid);
+        CacheService.storeCachedEvents(calendar.url, filteredEvents, cachedEvents.etag);
       }
     }
   }
@@ -481,7 +528,9 @@ export class SyncService {
         case 'update':
           await this.davClient.updateEvent(calendar, event);
           break;
-        // Note: delete operations would be implemented here
+        case 'delete':
+          await this.davClient.deleteEvent(calendar, event);
+          break;
       }
     } else if (resourceType === 'contact') {
       const contact = data as Contact;
@@ -494,7 +543,7 @@ export class SyncService {
         case 'update':
           await this.davClient.updateContact(addressBook, contact);
           break;
-        // Note: delete operations would be implemented here
+        // Note: delete operations for contacts would be implemented here
       }
     }
   }

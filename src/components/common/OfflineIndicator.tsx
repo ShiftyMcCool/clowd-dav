@@ -24,7 +24,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [networkService]);
 
   if (!isOffline && showWhenOffline) {
     return null;
