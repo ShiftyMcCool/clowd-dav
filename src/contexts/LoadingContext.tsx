@@ -58,6 +58,10 @@ class LoadingManager {
 
 const loadingManager = new LoadingManager();
 
+// Create stable function references outside the component
+const stableShowLoading = loadingManager.showLoading.bind(loadingManager);
+const stableHideLoading = loadingManager.hideLoading.bind(loadingManager);
+
 export const LoadingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loadingState, setLoadingState] = useState<LoadingState>(loadingManager.getCurrentState());
 
@@ -65,11 +69,11 @@ export const LoadingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return loadingManager.subscribe(setLoadingState);
   }, []);
 
-  const contextValue: LoadingContextType = {
+  const contextValue = React.useMemo<LoadingContextType>(() => ({
     loadingState,
-    showLoading: loadingManager.showLoading.bind(loadingManager),
-    hideLoading: loadingManager.hideLoading.bind(loadingManager)
-  };
+    showLoading: stableShowLoading,
+    hideLoading: stableHideLoading
+  }), [loadingState]);
 
   return (
     <LoadingContext.Provider value={contextValue}>

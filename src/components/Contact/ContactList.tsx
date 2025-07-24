@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Contact, AddressBook } from "../../types/dav";
 import { SyncService } from "../../services/SyncService";
-import { useLoading } from "../../contexts/LoadingContext";
+import { LoadingOverlay } from "../common/LoadingOverlay";
 import "./ContactList.css";
 
 interface ContactListProps {
@@ -17,16 +17,16 @@ const ContactList: React.FC<ContactListProps> = ({
   onContactSelect,
   onAddContact,
 }) => {
-  const { showLoading, hideLoading } = useLoading();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sortBy, setSortBy] = useState<"name" | "org">("name");
 
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        showLoading("Loading contacts...", "medium");
+        setLoading(true);
         setError(null);
         const fetchedContacts = await syncService.getContacts(addressBook);
         setContacts(fetchedContacts);
@@ -36,12 +36,12 @@ const ContactList: React.FC<ContactListProps> = ({
         );
         console.error("Error fetching contacts:", err);
       } finally {
-        hideLoading();
+        setLoading(false);
       }
     };
 
     fetchContacts();
-  }, [addressBook, syncService, showLoading, hideLoading]);
+  }, [addressBook, syncService]);
 
   const filteredContacts = contacts.filter((contact) => {
     const searchLower = searchTerm.toLowerCase();
@@ -84,68 +84,77 @@ const ContactList: React.FC<ContactListProps> = ({
   }
 
   return (
-    <div className="contact-list-container">
-      <div className="contact-list-header">
-        <h2>{addressBook.displayName}</h2>
-        <button
-          className="add-contact-button"
-          onClick={onAddContact}
-          aria-label="Add new contact"
-        >
-          + Add Contact
-        </button>
-      </div>
-
-      <div className="contact-list-controls">
-        <input
-          type="text"
-          placeholder="Search contacts..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className="contact-search-input"
-          aria-label="Search contacts"
-        />
-
-        <div className="contact-sort-control">
-          <label htmlFor="contact-sort">Sort by:</label>
-          <select
-            id="contact-sort"
-            value={sortBy}
-            onChange={handleSortChange}
-            aria-label="Sort contacts by"
+    <>
+      <div className="contact-list-container">
+        <div className="contact-list-header">
+          <h2>{addressBook.displayName}</h2>
+          <button
+            className="add-contact-button"
+            onClick={onAddContact}
+            aria-label="Add new contact"
           >
-            <option value="name">Name</option>
-            <option value="org">Organization</option>
-          </select>
+            + Add Contact
+          </button>
         </div>
-      </div>
 
-      {sortedContacts.length === 0 ? (
-        <div className="contact-list-empty">
-          {searchTerm ? "No contacts match your search" : "No contacts found"}
-        </div>
-      ) : (
-        <ul className="contact-list">
-          {sortedContacts.map((contact) => (
-            <li
-              key={contact.uid}
-              className="contact-list-item"
-              onClick={() => onContactSelect(contact)}
+        <div className="contact-list-controls">
+          <input
+            type="text"
+            placeholder="Search contacts..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="contact-search-input"
+            aria-label="Search contacts"
+          />
+
+          <div className="contact-sort-control">
+            <label htmlFor="contact-sort">Sort by:</label>
+            <select
+              id="contact-sort"
+              value={sortBy}
+              onChange={handleSortChange}
+              aria-label="Sort contacts by"
             >
-              <div className="contact-list-item-name">{contact.fn}</div>
-              {contact.org && (
-                <div className="contact-list-item-org">{contact.org}</div>
-              )}
-              {contact.email && contact.email.length > 0 && (
-                <div className="contact-list-item-email">
-                  {contact.email[0]}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+              <option value="name">Name</option>
+              <option value="org">Organization</option>
+            </select>
+          </div>
+        </div>
+
+        {sortedContacts.length === 0 ? (
+          <div className="contact-list-empty">
+            {searchTerm ? "No contacts match your search" : "No contacts found"}
+          </div>
+        ) : (
+          <ul className="contact-list">
+            {sortedContacts.map((contact) => (
+              <li
+                key={contact.uid}
+                className="contact-list-item"
+                onClick={() => onContactSelect(contact)}
+              >
+                <div className="contact-list-item-name">{contact.fn}</div>
+                {contact.org && (
+                  <div className="contact-list-item-org">{contact.org}</div>
+                )}
+                {contact.email && contact.email.length > 0 && (
+                  <div className="contact-list-item-email">
+                    {contact.email[0]}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      
+      {/* Local loading overlay for contacts */}
+      <LoadingOverlay 
+        isVisible={loading} 
+        text="Loading contacts..." 
+        size="medium" 
+      />
+    </>
   );
 };
 
