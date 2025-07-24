@@ -38,8 +38,7 @@ jobs:
       commands: |
         npm run docker:build-production
     useTTY: true
-    condition: SUCCESSFUL
-    optional: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !BuildImageStep
     name: build docker
     output: !OCIOutput
