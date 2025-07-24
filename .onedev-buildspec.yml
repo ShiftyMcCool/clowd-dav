@@ -38,34 +38,8 @@ jobs:
       commands: |
         npm run docker:build-production
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
-  - !BuildImageStep
-    name: build docker
-    output: !OCIOutput
-      destPath: ./oci
-    registryLogins:
-    - registryUrl: '@server_host@'
-      userName: '@job_token@'
-      passwordSecret: access-token
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
-  - !PushImageStep
-    name: push ci image
-    srcPath: ./oci
-    destImage: '@server@/@project_path@/@project_name@:@build_number@'
-    registryLogins:
-    - registryUrl: '@server_host@'
-      userName: '@job_token@'
-      passwordSecret: access-token
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
-  - !PushImageStep
-    name: push latest image
-    srcPath: ./oci
-    destImage: '@server@/@project_path@/@project_name@:latest'
-    registryLogins:
-    - registryUrl: '@server_host@'
-      userName: '@job_token@'
-      passwordSecret: access-token
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !BranchUpdateTrigger {}
   retryCondition: never
