@@ -34,7 +34,7 @@ jobs:
     name: build docker
     output: !OCIOutput
       destPath: ./oci
-    moreOptions: --build-arg REACT_APP_ENVIRONMENT=production .
+    moreOptions: --build-arg REACT_APP_ENVIRONMENT=production
     condition: SUCCESSFUL
     optional: false
   - !PushImageStep
