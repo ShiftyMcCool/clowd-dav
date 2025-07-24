@@ -43,7 +43,7 @@
 }
 
 .sync-status-syncing .sync-status-icon {
-  animation: spin 1s linear infinite;
+  animation: loading-spin 1s linear infinite;
 }
 
 .sync-status-offline {
@@ -198,14 +198,7 @@
 }
 
 /* Animations */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* Removed duplicate spin animation - using loading-spin from LoadingOverlay instead */
 
 /* Responsive design */
 @media (max-width: 640px) {

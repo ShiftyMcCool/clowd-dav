@@ -632,7 +632,7 @@ const AppContent: React.FC = () => {
     };
 
     return (
-      <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><div className="loading-text">Loading...</div></div>}>
+      <Suspense fallback={<div />}>
         <SetupForm onSetupComplete={handleSetup} />
       </Suspense>
     );
@@ -642,7 +642,7 @@ const AppContent: React.FC = () => {
   const CalendarComponent = useMemo(() => {
     const Component = () => {
       return (
-        <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><div className="loading-text">Loading calendar...</div></div>}>
+        <Suspense fallback={<div />}>
           <div className="view-container">
             <CalendarView
               calendars={calendars}
@@ -657,7 +657,7 @@ const AppContent: React.FC = () => {
 
             {/* Event Form Modal */}
             {showEventForm && (
-              <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><div className="loading-text">Loading form...</div></div>}>
+              <Suspense fallback={<div />}>
                 <EventForm
                   event={editingEvent || undefined}
                   calendars={calendars}
@@ -691,7 +691,7 @@ const AppContent: React.FC = () => {
   // Contacts component
   const ContactsComponent = () => {
     return (
-      <Suspense fallback={<div className="loading-container"><div className="loading-spinner"></div><div className="loading-text">Loading contacts...</div></div>}>
+      <Suspense fallback={<div />}>
         <div className="view-container">
           <div className="contacts-view">
             {addressBooks.length === 0 ? (
@@ -724,7 +724,7 @@ const AppContent: React.FC = () => {
 
                 <div className="contacts-layout">
                   {selectedAddressBook && (
-                    <Suspense fallback={<div className="loading-spinner"></div>}>
+                    <Suspense fallback={<div />}>
                       <ContactList
                         addressBook={selectedAddressBook}
                         syncService={syncService}
@@ -735,7 +735,7 @@ const AppContent: React.FC = () => {
                   )}
 
                   {selectedContact && !showContactForm && (
-                    <Suspense fallback={<div className="loading-spinner"></div>}>
+                    <Suspense fallback={<div />}>
                       <ContactDetail
                         contact={selectedContact}
                         onEdit={() => handleEditContact(selectedContact)}
@@ -745,7 +745,7 @@ const AppContent: React.FC = () => {
                   )}
 
                   {showContactForm && selectedAddressBook && (
-                    <Suspense fallback={<div className="loading-spinner"></div>}>
+                    <Suspense fallback={<div />}>
                       <ContactForm
                         contact={editingContact || undefined}
                         addressBook={selectedAddressBook}

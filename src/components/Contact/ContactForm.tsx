@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Contact, AddressBook } from '../../types/dav';
 import { DAVClient } from '../../services/DAVClient';
+import { useLoading } from '../../contexts/LoadingContext';
 import './ContactForm.css';
 
 interface ContactFormProps {
@@ -18,6 +19,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
   onSave,
   onCancel
 }) => {
+  const { showLoading, hideLoading } = useLoading();
   const isEditing = !!contact;
   
   // Initialize form state
@@ -38,7 +40,6 @@ const ContactForm: React.FC<ContactFormProps> = ({
     email?: string[];
   }>({});
   
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Validate form data
@@ -77,7 +78,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
       return;
     }
     
-    setIsSubmitting(true);
+    showLoading(isEditing ? 'Updating contact...' : 'Creating contact...', 'medium');
     setSubmitError(null);
     
     try {
@@ -110,7 +111,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
       setSubmitError(err instanceof Error ? err.message : 'Failed to save contact');
       console.error('Error saving contact:', err);
     } finally {
-      setIsSubmitting(false);
+      hideLoading();
     }
   };
 
@@ -268,16 +269,14 @@ const ContactForm: React.FC<ContactFormProps> = ({
             type="button"
             onClick={onCancel}
             className="cancel-button"
-            disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
             className="save-button"
-            disabled={isSubmitting}
           >
-            {isSubmitting ? 'Saving...' : 'Save Contact'}
+            Save Contact
           </button>
         </div>
       </form>

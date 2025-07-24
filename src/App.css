@@ -1,3 +1,6 @@
+/* Import global loading styles */
+@import './components/common/LoadingOverlay.css';
+
 /* Main App Container */
 .app {
   min-height: 100vh;
@@ -32,10 +35,10 @@
 }
 
 .app-loading .loading-spinner {
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  border: 3px solid rgba(66, 133, 244, 0.2);
   border-radius: 50%;
   border-top: 3px solid #4285f4;
-  animation: spin 1s linear infinite;
+  animation: loading-spin 1s linear infinite;
 }
 
 .app-loading .loading-spinner.large {
@@ -188,12 +191,12 @@ nc Status Indicator */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f44336'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E");
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
+@keyframes loading-spin {
+  0% { 
+    transform: rotate(0deg); 
   }
-  to {
-    transform: rotate(360deg);
+  100% { 
+    transform: rotate(360deg); 
   }
 }
 

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Contact, AddressBook } from '../../types/dav';
-import { SyncService } from '../../services/SyncService';
-import './ContactList.css';
+import React, { useState, useEffect } from "react";
+import { Contact, AddressBook } from "../../types/dav";
+import { SyncService } from "../../services/SyncService";
+import { useLoading } from "../../contexts/LoadingContext";
+import "./ContactList.css";
 
 interface ContactListProps {
   addressBook: AddressBook;
@@ -10,53 +11,57 @@ interface ContactListProps {
   onAddContact: () => void;
 }
 
-const ContactList: React.FC<ContactListProps> = ({ 
-  addressBook, 
-  syncService, 
-  onContactSelect, 
-  onAddContact 
+const ContactList: React.FC<ContactListProps> = ({
+  addressBook,
+  syncService,
+  onContactSelect,
+  onAddContact,
 }) => {
+  const { showLoading, hideLoading } = useLoading();
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'name' | 'org'>('name');
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"name" | "org">("name");
 
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        setLoading(true);
+        showLoading("Loading contacts...", "medium");
         setError(null);
         const fetchedContacts = await syncService.getContacts(addressBook);
         setContacts(fetchedContacts);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load contacts');
-        console.error('Error fetching contacts:', err);
+        setError(
+          err instanceof Error ? err.message : "Failed to load contacts"
+        );
+        console.error("Error fetching contacts:", err);
       } finally {
-        setLoading(false);
+        hideLoading();
       }
     };
 
     fetchContacts();
-  }, [addressBook, syncService]);
+  }, [addressBook, syncService, showLoading, hideLoading]);
 
-  const filteredContacts = contacts.filter(contact => {
+  const filteredContacts = contacts.filter((contact) => {
     const searchLower = searchTerm.toLowerCase();
     return (
       contact.fn.toLowerCase().includes(searchLower) ||
       contact.org?.toLowerCase().includes(searchLower) ||
-      contact.email?.some(email => email.toLowerCase().includes(searchLower)) ||
-      contact.tel?.some(tel => tel.includes(searchTerm))
+      contact.email?.some((email) =>
+        email.toLowerCase().includes(searchLower)
+      ) ||
+      contact.tel?.some((tel) => tel.includes(searchTerm))
     );
   });
 
   const sortedContacts = [...filteredContacts].sort((a, b) => {
-    if (sortBy === 'name') {
+    if (sortBy === "name") {
       return a.fn.localeCompare(b.fn);
     } else {
       // Sort by organization, fallback to name if org is not available
-      const orgA = a.org || '';
-      const orgB = b.org || '';
+      const orgA = a.org || "";
+      const orgB = b.org || "";
       return orgA.localeCompare(orgB) || a.fn.localeCompare(b.fn);
     }
   });
@@ -66,21 +71,8 @@ const ContactList: React.FC<ContactListProps> = ({
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortBy(e.target.value as 'name' | 'org');
+    setSortBy(e.target.value as "name" | "org");
   };
-
-  if (loading) {
-    return (
-      <div className="contact-list-container">
-        <div className="contact-list-header">
-          <h2>{addressBook.displayName}</h2>
-        </div>
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-          Loading contacts...
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -95,15 +87,15 @@ const ContactList: React.FC<ContactListProps> = ({
     <div className="contact-list-container">
       <div className="contact-list-header">
         <h2>{addressBook.displayName}</h2>
-        <button 
-          className="add-contact-button" 
+        <button
+          className="add-contact-button"
           onClick={onAddContact}
           aria-label="Add new contact"
         >
           + Add Contact
         </button>
       </div>
-      
+
       <div className="contact-list-controls">
         <input
           type="text"
@@ -113,12 +105,12 @@ const ContactList: React.FC<ContactListProps> = ({
           className="contact-search-input"
           aria-label="Search contacts"
         />
-        
+
         <div className="contact-sort-control">
           <label htmlFor="contact-sort">Sort by:</label>
-          <select 
-            id="contact-sort" 
-            value={sortBy} 
+          <select
+            id="contact-sort"
+            value={sortBy}
             onChange={handleSortChange}
             aria-label="Sort contacts by"
           >
@@ -130,13 +122,13 @@ const ContactList: React.FC<ContactListProps> = ({
 
       {sortedContacts.length === 0 ? (
         <div className="contact-list-empty">
-          {searchTerm ? 'No contacts match your search' : 'No contacts found'}
+          {searchTerm ? "No contacts match your search" : "No contacts found"}
         </div>
       ) : (
         <ul className="contact-list">
           {sortedContacts.map((contact) => (
-            <li 
-              key={contact.uid} 
+            <li
+              key={contact.uid}
               className="contact-list-item"
               onClick={() => onContactSelect(contact)}
             >
@@ -145,7 +137,9 @@ const ContactList: React.FC<ContactListProps> = ({
                 <div className="contact-list-item-org">{contact.org}</div>
               )}
               {contact.email && contact.email.length > 0 && (
-                <div className="contact-list-item-email">{contact.email[0]}</div>
+                <div className="contact-list-item-email">
+                  {contact.email[0]}
+                </div>
               )}
             </li>
           ))}
