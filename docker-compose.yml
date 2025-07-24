@@ -1,74 +1,12 @@
 version: '3.8'
 
 services:
-  # Development environment
-  caldav-client-dev:
+  clowd-dav:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - REACT_APP_ENVIRONMENT=development
-    ports:
-      - "3000:80"
-    environment:
-      - REACT_APP_ENVIRONMENT=development
-      - REACT_APP_DEBUG=true
-      - REACT_APP_LOG_LEVEL=debug
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    profiles:
-      - dev
-
-  # Staging environment
-  caldav-client-staging:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - REACT_APP_ENVIRONMENT=staging
-    ports:
-      - "8080:80"
-    environment:
-      - REACT_APP_ENVIRONMENT=staging
-      - REACT_APP_DEBUG=true
-      - REACT_APP_LOG_LEVEL=info
-      - REACT_APP_CACHE_DURATION=7200000
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    profiles:
-      - staging
-
-  # Production environment
-  caldav-client-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - REACT_APP_ENVIRONMENT=production
     ports:
       - "80:80"
-    environment:
-      - REACT_APP_ENVIRONMENT=production
-      - REACT_APP_DEBUG=false
-      - REACT_APP_LOG_LEVEL=error
-      - REACT_APP_CACHE_DURATION=86400000
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
-    profiles:
-      - prod
-
-  # Reverse proxy for multiple environments (optional)
-  nginx-proxy:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - caldav-client-staging
-      - caldav-client-prod
-    profiles:
-      - proxy

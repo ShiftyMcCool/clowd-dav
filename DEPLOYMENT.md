@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying the CalDAV/CardDAV Client in different environments with production optimizations.
+This guide covers deploying Clowd DAV in different environments with production optimizations.
 
 ## Features
 
@@ -90,10 +90,10 @@ docker-compose --profile prod up -d
 docker build \
   --build-arg REACT_APP_ENVIRONMENT=production \
   --build-arg REACT_APP_DEBUG=false \
-  -t caldav-client:custom .
+  -t clowd-dav:custom .
 
 # Run with custom port
-docker run -p 8080:80 -e REACT_APP_ENVIRONMENT=production caldav-client:custom
+docker run -p 8080:80 -e REACT_APP_ENVIRONMENT=production clowd-dav:custom
 ```
 
 ## Performance Optimization

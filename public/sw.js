@@ -152,7 +152,7 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification('CalDAV/CardDAV Client', options)
+    self.registration.showNotification('Clowd DAV', options)
   );
 });
 

@@ -21,21 +21,15 @@
     "rxjs": "^7.8.2",
     "typescript": "^4.9.5",
     "vcard-parser": "^1.0.0",
-    "vcf": "^2.1.2",
-    "web-vitals": "^2.1.4"
+    "vcf": "^2.1.2"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "build:staging": "env-cmd -f .env.staging react-scripts build",
     "build:production": "env-cmd -f .env.production react-scripts build",
     "test": "react-scripts test",
-    "test:coverage": "react-scripts test --coverage --watchAll=false",
-    "analyze": "npm run build && npx serve -s build",
     "docker:build": "docker build -t clowd-dav .",
     "docker:run": "docker run -p 80:80 clowd-dav",
-    "docker:build-staging": "docker build -t clowd-dav:staging --build-arg REACT_APP_ENVIRONMENT=staging .",
-    "docker:build-production": "docker build -t clowd-dav:production --build-arg REACT_APP_ENVIRONMENT=production .",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
