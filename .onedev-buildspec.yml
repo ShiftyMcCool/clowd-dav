@@ -30,16 +30,6 @@ jobs:
     buildVersion: '@script:builtin:node:determine-project-version@'
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
-    name: build & test
-    runInContainer: true
-    image: node
-    interpreter: !DefaultInterpreter
-      commands: |
-        npm run docker:build-production
-    useTTY: true
-    condition: SUCCESSFUL
-    optional: false
   - !BuildImageStep
     name: build docker
     output: !OCIOutput
