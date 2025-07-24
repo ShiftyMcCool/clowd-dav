@@ -40,6 +40,25 @@ jobs:
     useTTY: true
     condition: SUCCESSFUL
     optional: false
+  - !BuildImageStep
+    name: build docker
+    output: !OCIOutput
+      destPath: ./oci
+    moreOptions: --build-arg REACT_APP_ENVIRONMENT=production .
+    condition: SUCCESSFUL
+    optional: false
+  - !PushImageStep
+    name: push ci
+    srcPath: ./oci
+    destImage: '@server@/@project_path@/@project_name@:@build_number@'
+    condition: SUCCESSFUL
+    optional: false
+  - !PushImageStep
+    name: push latest
+    srcPath: ./oci
+    destImage: '@server@/@project_path@/@project_name@:latest'
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !BranchUpdateTrigger {}
   retryCondition: never
