@@ -41,12 +41,20 @@ jobs:
     name: push ci
     srcPath: ./oci
     destImage: '@server@/@project_path@/@project_name@:@build_number@'
+    registryLogins:
+    - registryUrl: '@server_host@'
+      userName: '@job_token@'
+      passwordSecret: access-token
     condition: SUCCESSFUL
     optional: false
   - !PushImageStep
     name: push latest
     srcPath: ./oci
     destImage: '@server@/@project_path@/@project_name@:latest'
+    registryLogins:
+    - registryUrl: '@server_host@'
+      userName: '@job_token@'
+      passwordSecret: access-token
     condition: SUCCESSFUL
     optional: false
   triggers:
