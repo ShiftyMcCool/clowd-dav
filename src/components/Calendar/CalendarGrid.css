@@ -12,16 +12,16 @@
 .month-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
+  background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border-primary);
 }
 
 .month-day-header {
   padding: 0.75rem 0.5rem;
   text-align: center;
   font-weight: 600;
-  color: #495057;
-  border-right: 1px solid #dee2e6;
+  color: var(--color-text-primary);
+  border-right: 1px solid var(--color-border-primary);
   font-size: 14px;
 }
 
@@ -34,13 +34,14 @@
   grid-template-columns: repeat(7, 1fr);
   grid-template-rows: repeat(6, 1fr);
   flex: 1;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--color-border-primary);
   border-top: none;
+  background: var(--color-bg-primary);
 }
 
 .month-day {
-  border-right: 1px solid #dee2e6;
-  border-bottom: 1px solid #dee2e6;
+  border-right: 1px solid var(--color-border-primary);
+  border-bottom: 1px solid var(--color-border-primary);
   padding: 0.5rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -48,6 +49,7 @@
   flex-direction: column;
   min-height: 100px;
   position: relative;
+  background: var(--color-bg-primary);
 }
 
 .month-day:last-child {
@@ -55,30 +57,31 @@
 }
 
 .month-day:hover {
-  background: #f8f9fa;
+  background: var(--color-bg-tertiary);
 }
 
 .month-day.today {
-  background: #e7f3ff;
+  background: var(--color-calendar-today);
 }
 
 .month-day.other-month {
-  color: #adb5bd;
-  background: #fafafa;
+  color: var(--color-text-muted);
+  background: var(--color-bg-secondary);
 }
 
 .month-day.other-month:hover {
-  background: #f0f0f0;
+  background: var(--color-bg-tertiary);
 }
 
 .day-number {
   font-weight: 600;
   margin-bottom: 0.25rem;
   font-size: 14px;
+  color: var(--color-text-primary);
 }
 
 .today .day-number {
-  color: #007bff;
+  color: var(--color-primary);
   font-weight: 700;
 }
 
@@ -91,8 +94,8 @@
 }
 
 .event-item {
-  background: #007bff;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 11px;
@@ -104,9 +107,9 @@
 }
 
 .event-item:hover {
-  background: #0056b3;
+  background: var(--color-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .month-event .event-title {
@@ -115,7 +118,7 @@
 
 .more-events {
   font-size: 10px;
-  color: #6c757d;
+  color: var(--color-text-secondary);
   font-weight: 500;
   margin-top: 2px;
 }
@@ -128,14 +131,14 @@
 .week-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
+  background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border-primary);
 }
 
 .week-day-header {
   padding: 1rem 0.5rem;
   text-align: center;
-  border-right: 1px solid #dee2e6;
+  border-right: 1px solid var(--color-border-primary);
 }
 
 .week-day-header:last-child {
@@ -144,7 +147,7 @@
 
 .day-name {
   font-weight: 600;
-  color: #495057;
+  color: var(--color-text-primary);
   font-size: 14px;
   margin-bottom: 0.25rem;
 }
@@ -152,12 +155,12 @@
 .day-number {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #212529;
+  color: var(--color-text-primary);
 }
 
 .day-number.today {
-  color: #007bff;
-  background: #e7f3ff;
+  color: var(--color-primary);
+  background: var(--color-calendar-today);
   border-radius: 50%;
   width: 2.5rem;
   height: 2.5rem;
@@ -171,18 +174,20 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   flex: 1;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--color-border-primary);
   border-top: none;
+  background: var(--color-bg-primary);
 }
 
 .week-day {
-  border-right: 1px solid #dee2e6;
+  border-right: 1px solid var(--color-border-primary);
   padding: 1rem 0.5rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
   display: flex;
   flex-direction: column;
   min-height: 400px;
+  background: var(--color-bg-primary);
 }
 
 .week-day:last-child {
@@ -190,11 +195,11 @@
 }
 
 .week-day:hover {
-  background: #f8f9fa;
+  background: var(--color-bg-tertiary);
 }
 
 .week-day.today {
-  background: #e7f3ff;
+  background: var(--color-calendar-today);
 }
 
 .week-event {

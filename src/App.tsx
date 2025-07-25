@@ -23,6 +23,7 @@ import {
   SyncStatusIndicator,
 } from "./components/common";
 import { LoadingProvider, useLoading } from "./contexts/LoadingContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthConfig } from "./types/auth";
 import { AuthManager } from "./services/AuthManager";
 import { DAVClient } from "./services/DAVClient";
@@ -42,6 +43,7 @@ import {
 } from "./services/ErrorHandlingService";
 import { useSync } from "./hooks/useSync";
 import { ContactList } from "./components/Contact";
+import "./styles/themes.css";
 import "./App.css";
 
 // Lazy load components for code splitting
@@ -912,11 +914,13 @@ const AppContent: React.FC = () => {
 // Main App wrapper component
 function App() {
   return (
-    <LoadingProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </LoadingProvider>
+    <ThemeProvider>
+      <LoadingProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </LoadingProvider>
+    </ThemeProvider>
   );
 }
 

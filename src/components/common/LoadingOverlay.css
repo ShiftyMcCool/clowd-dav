@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.85);
+  background-color: var(--color-bg-overlay);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -21,9 +21,9 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background-color: white;
+  background-color: var(--color-bg-primary);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-lg);
   min-width: 200px;
   text-align: center;
 }
@@ -31,7 +31,7 @@
 /* Spinner styles now handled inline to prevent conflicts */
 
 .loading-overlay-content .loading-text {
-  color: #333;
+  color: var(--color-text-primary);
   font-size: 0.95rem;
   font-weight: 500;
   margin: 0;

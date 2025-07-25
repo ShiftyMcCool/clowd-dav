@@ -1,0 +1,189 @@
+/* CSS Custom Properties for Theme Variables */
+
+:root {
+  /* Light theme colors */
+  --color-primary: #4285f4;
+  --color-primary-hover: #3367d6;
+  --color-primary-light: rgba(66, 133, 244, 0.1);
+  
+  --color-secondary: #6c757d;
+  --color-success: #28a745;
+  --color-warning: #ffc107;
+  --color-danger: #dc3545;
+  --color-danger-hover: #c82333;
+  
+  /* Background colors */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fa;
+  --color-bg-tertiary: #e9ecef;
+  --color-bg-overlay: rgba(0, 0, 0, 0.5);
+  
+  /* Text colors */
+  --color-text-primary: #212529;
+  --color-text-secondary: #6c757d;
+  --color-text-muted: #868e96;
+  --color-text-inverse: #ffffff;
+  
+  /* Border colors */
+  --color-border-primary: #dee2e6;
+  --color-border-secondary: #e9ecef;
+  --color-border-focus: #80bdff;
+  
+  /* Navigation colors */
+  --color-nav-bg: #282c34;
+  --color-nav-text: #ffffff;
+  --color-nav-text-muted: rgba(255, 255, 255, 0.8);
+  --color-nav-hover: rgba(255, 255, 255, 0.1);
+  --color-nav-active: rgba(255, 255, 255, 0.2);
+  
+  /* Form colors */
+  --color-input-bg: #ffffff;
+  --color-input-border: #ced4da;
+  --color-input-focus: #80bdff;
+  --color-input-placeholder: #6c757d;
+  
+  /* Shadow colors */
+  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+  
+  /* Calendar specific */
+  --color-calendar-today: #fff3cd;
+  --color-calendar-selected: #cce5ff;
+  --color-calendar-event: #e3f2fd;
+  --color-calendar-weekend: #f8f9fa;
+}
+
+/* Dark theme colors */
+[data-theme="dark"] {
+  /* Primary colors remain similar but adjusted for dark backgrounds */
+  --color-primary: #5a9cff;
+  --color-primary-hover: #4285f4;
+  --color-primary-light: rgba(90, 156, 255, 0.2);
+  
+  --color-secondary: #adb5bd;
+  --color-success: #20c997;
+  --color-warning: #ffc107;
+  --color-danger: #e74c3c;
+  --color-danger-hover: #dc3545;
+  
+  /* Background colors */
+  --color-bg-primary: #1a1a1a;
+  --color-bg-secondary: #2d2d2d;
+  --color-bg-tertiary: #404040;
+  --color-bg-overlay: rgba(0, 0, 0, 0.7);
+  
+  /* Text colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #b0b0b0;
+  --color-text-muted: #888888;
+  --color-text-inverse: #000000;
+  
+  /* Border colors */
+  --color-border-primary: #404040;
+  --color-border-secondary: #333333;
+  --color-border-focus: #5a9cff;
+  
+  /* Navigation colors - darker in dark theme */
+  --color-nav-bg: #1a1a1a;
+  --color-nav-text: #ffffff;
+  --color-nav-text-muted: rgba(255, 255, 255, 0.7);
+  --color-nav-hover: rgba(255, 255, 255, 0.1);
+  --color-nav-active: rgba(255, 255, 255, 0.2);
+  
+  /* Form colors */
+  --color-input-bg: #2d2d2d;
+  --color-input-border: #404040;
+  --color-input-focus: #5a9cff;
+  --color-input-placeholder: #888888;
+  
+  /* Shadow colors - more subtle in dark theme */
+  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+  
+  /* Calendar specific */
+  --color-calendar-today: #3d3d00;
+  --color-calendar-selected: #1a3d5c;
+  --color-calendar-event: #1e3a52;
+  --color-calendar-weekend: #2d2d2d;
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Base styles using theme variables */
+body {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+/* Button styles */
+.btn-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: var(--color-text-inverse);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-text-inverse);
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger-hover);
+  border-color: var(--color-danger-hover);
+}
+
+/* Form controls */
+input, select, textarea {
+  background-color: var(--color-input-bg);
+  border-color: var(--color-input-border);
+  color: var(--color-text-primary);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-input-focus);
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-input-placeholder);
+}
+
+/* Card/Panel styles */
+.card, .panel {
+  background-color: var(--color-bg-primary);
+  border-color: var(--color-border-primary);
+  color: var(--color-text-primary);
+}
+
+/* Modal styles */
+.modal-backdrop {
+  background-color: var(--color-bg-overlay);
+}
+
+.modal-content {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+/* Loading spinner colors */
+.loading-spinner {
+  border-color: var(--color-primary-light);
+  border-top-color: var(--color-primary);
+}

@@ -3,8 +3,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  background: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
+  background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border-primary);
   flex-wrap: wrap;
   gap: 1rem;
 }
@@ -16,12 +16,13 @@
 }
 
 .nav-button {
-  background: #ffffff;
-  border: 1px solid #dee2e6;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
   border-radius: 4px;
   padding: 0.5rem 0.75rem;
   cursor: pointer;
   font-size: 14px;
+  color: var(--color-text-primary);
   transition: all 0.2s ease;
   min-width: 40px;
   height: 36px;
@@ -31,29 +32,29 @@
 }
 
 .nav-button:hover {
-  background: #e9ecef;
-  border-color: #adb5bd;
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-text-secondary);
 }
 
 .nav-button:active {
-  background: #dee2e6;
+  background: var(--color-bg-tertiary);
 }
 
 .today-button {
   font-weight: 500;
-  color: #007bff;
+  color: var(--color-primary);
 }
 
 .today-button:hover {
-  background: #e7f3ff;
-  border-color: #007bff;
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
 }
 
 .calendar-title {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
-  color: #212529;
+  color: var(--color-text-primary);
   text-align: center;
   flex: 1;
   min-width: 200px;
@@ -61,21 +62,22 @@
 
 .view-controls {
   display: flex;
-  background: #ffffff;
-  border: 1px solid #dee2e6;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .view-button {
-  background: #ffffff;
+  background: var(--color-bg-primary);
   border: none;
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
+  color: var(--color-text-primary);
   transition: all 0.2s ease;
-  border-right: 1px solid #dee2e6;
+  border-right: 1px solid var(--color-border-primary);
 }
 
 .view-button:last-child {
@@ -83,16 +85,16 @@
 }
 
 .view-button:hover {
-  background: #f8f9fa;
+  background: var(--color-bg-tertiary);
 }
 
 .view-button.active {
-  background: #007bff;
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
 }
 
 .view-button.active:hover {
-  background: #0056b3;
+  background: var(--color-primary-hover);
 }
 
 /* Responsive design */

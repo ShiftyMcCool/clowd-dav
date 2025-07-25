@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ThemeToggle } from '../common/ThemeToggle';
 import './Navigation.css';
 
 interface NavigationProps {
@@ -61,17 +62,20 @@ export const Navigation: React.FC<NavigationProps> = ({
             </li>
           </ul>
 
-          {username && (
-            <div className="user-controls">
-              <div className="username">
-                <span className="user-icon"></span>
-                {username}
+          <div className="nav-controls">
+            <ThemeToggle />
+            {username && (
+              <div className="user-controls">
+                <div className="username">
+                  <span className="user-icon"></span>
+                  {username}
+                </div>
+                <button onClick={onLogout} className="logout-button">
+                  Logout
+                </button>
               </div>
-              <button onClick={onLogout} className="logout-button">
-                Logout
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </nav>
       </div>
     </header>

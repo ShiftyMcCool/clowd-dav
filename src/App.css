@@ -5,7 +5,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f8f9fa;
+  background-color: var(--color-bg-secondary);
 }
 
 /* Main Content Area */
@@ -22,7 +22,7 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #f8f9fa;
+  background-color: var(--color-bg-secondary);
 }
 
 .app-loading .loading-container {
@@ -34,9 +34,9 @@
 }
 
 .app-loading .loading-spinner {
-  border: 3px solid rgba(66, 133, 244, 0.2);
+  border: 3px solid var(--color-primary-light);
   border-radius: 50%;
-  border-top: 3px solid #4285f4;
+  border-top: 3px solid var(--color-primary);
   animation: loading-spin 1s linear infinite;
 }
 
@@ -47,7 +47,7 @@
 
 .app-loading .loading-text {
   margin-top: 0.75rem;
-  color: #666;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
 }
 
@@ -74,19 +74,19 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #666;
+  color: var(--color-text-secondary);
   text-align: center;
   padding: 2rem;
 }
 
 .no-address-books h2 {
   margin-bottom: 1rem;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .no-address-books button {
-  background-color: #4285f4;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
   border: none;
   border-radius: 4px;
   padding: 8px 16px;
@@ -96,7 +96,7 @@
 }
 
 .no-address-books button:hover {
-  background-color: #3367d6;
+  background-color: var(--color-primary-hover);
 }
 
 .contacts-container {
@@ -110,20 +110,22 @@
   display: flex;
   align-items: center;
   padding: 10px 15px;
-  background-color: #f0f0f0;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border-primary);
   gap: 10px;
 }
 
 .address-book-selector label {
   font-weight: 500;
+  color: var(--color-text-primary);
 }
 
 .address-book-selector select {
   padding: 6px 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-input-border);
   border-radius: 4px;
-  background-color: white;
+  background-color: var(--color-input-bg);
+  color: var(--color-text-primary);
   min-width: 200px;
 }
 
@@ -156,11 +158,11 @@ nc Status Indicator */
   display: flex;
   align-items: center;
   padding: 6px 12px;
-  background-color: white;
+  background-color: var(--color-bg-primary);
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   font-size: 12px;
-  color: #666;
+  color: var(--color-text-secondary);
   z-index: 900;
 }
 

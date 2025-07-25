@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #ffffff;
+  background: var(--color-bg-primary);
 }
 
 .calendar-content {
@@ -17,7 +17,7 @@
   align-items: center;
   justify-content: center;
   height: 400px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 /* Removed conflicting spinner styles - using global LoadingOverlay instead */
@@ -29,13 +29,13 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background-color: #007bff;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
   border: none;
   font-size: 24px;
   font-weight: 300;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+  box-shadow: var(--shadow-lg);
   transition: all 0.2s ease;
   z-index: 100;
   display: flex;
@@ -44,14 +44,14 @@
 }
 
 .fab-create-event:hover {
-  background-color: #0056b3;
-  box-shadow: 0 6px 16px rgba(0, 123, 255, 0.5);
+  background-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
 
 .fab-create-event:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+  box-shadow: var(--shadow-md);
 }
 
 /* Responsive design */
