@@ -785,6 +785,12 @@ export class DAVClient implements IDAVClient {
         }
         throw new Error(`Contact update failed with status ${response.status}`);
       }
+
+      // Update the contact's ETag with the new one from the response
+      const newETag = response.headers?.etag?.replace(/"/g, "");
+      if (newETag) {
+        contact.etag = newETag;
+      }
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a conflict error, re-throw as is

@@ -41,13 +41,13 @@ import {
   ErrorMessage as ErrorMessageType,
 } from "./services/ErrorHandlingService";
 import { useSync } from "./hooks/useSync";
+import { ContactList } from "./components/Contact";
 import "./App.css";
 
 // Lazy load components for code splitting
 const SetupForm = lazy(() => import("./components/SetupForm").then(module => ({ default: module.SetupForm })));
 const CalendarView = lazy(() => import("./components/Calendar/CalendarView").then(module => ({ default: module.CalendarView })));
 const EventForm = lazy(() => import("./components/Calendar/EventForm").then(module => ({ default: module.EventForm })));
-const ContactList = lazy(() => import("./components/Contact").then(module => ({ default: module.ContactList })));
 const ContactDetail = lazy(() => import("./components/Contact").then(module => ({ default: module.ContactDetail })));
 const ContactForm = lazy(() => import("./components/Contact").then(module => ({ default: module.ContactForm })));
 
@@ -117,6 +117,7 @@ const AppContent: React.FC = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showContactForm, setShowContactForm] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [contactRefreshTrigger, setContactRefreshTrigger] = useState(0);
 
   // Error handling and offline state
   const [errors, setErrors] = useState<ErrorMessageType[]>([]);
@@ -532,6 +533,10 @@ const AppContent: React.FC = () => {
     setShowContactForm(false);
   };
 
+
+
+
+
   // Handle adding a new contact
   const handleAddContact = () => {
     setSelectedContact(null);
@@ -565,7 +570,16 @@ const AppContent: React.FC = () => {
       // Close form and reset state
       setShowContactForm(false);
       setEditingContact(null);
-      setSelectedContact(null);
+      
+      // Update selected contact with the saved data (which has updated ETag)
+      if (editingContact) {
+        setSelectedContact(contactData);
+      } else {
+        setSelectedContact(contactData);
+      }
+      
+      // Trigger contact list refresh to get updated ETags
+      setContactRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error("Error saving contact:", error);
 
@@ -691,76 +705,71 @@ const AppContent: React.FC = () => {
   // Contacts component
   const ContactsComponent = () => {
     return (
-      <Suspense fallback={<div />}>
-        <div className="view-container">
-          <div className="contacts-view">
-            {addressBooks.length === 0 ? (
-              <div className="no-address-books">
-                <h2>No Address Books Found</h2>
-                <p>No address books were found on your CardDAV server.</p>
-                <button onClick={loadAddressBooks}>Refresh</button>
+      <div className="view-container">
+        <div className="contacts-view">
+          {addressBooks.length === 0 ? (
+            <div className="no-address-books">
+              <h2>No Address Books Found</h2>
+              <p>No address books were found on your CardDAV server.</p>
+              <button onClick={loadAddressBooks}>Refresh</button>
+            </div>
+          ) : (
+            <div className="contacts-container">
+              <div className="address-book-selector">
+                <label htmlFor="address-book-select">Address Book:</label>
+                <select
+                  id="address-book-select"
+                  value={selectedAddressBook?.url || ""}
+                  onChange={(e) => {
+                    const selected = addressBooks.find(
+                      (ab) => ab.url === e.target.value
+                    );
+                    if (selected) handleAddressBookChange(selected);
+                  }}
+                >
+                  {addressBooks.map((ab) => (
+                    <option key={ab.url} value={ab.url}>
+                      {ab.displayName}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <div className="contacts-container">
-                <div className="address-book-selector">
-                  <label htmlFor="address-book-select">Address Book:</label>
-                  <select
-                    id="address-book-select"
-                    value={selectedAddressBook?.url || ""}
-                    onChange={(e) => {
-                      const selected = addressBooks.find(
-                        (ab) => ab.url === e.target.value
-                      );
-                      if (selected) handleAddressBookChange(selected);
-                    }}
-                  >
-                    {addressBooks.map((ab) => (
-                      <option key={ab.url} value={ab.url}>
-                        {ab.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
-                <div className="contacts-layout">
-                  {selectedAddressBook && (
-                    <Suspense fallback={<div />}>
-                      <ContactList
-                        addressBook={selectedAddressBook}
-                        syncService={syncService}
-                        onContactSelect={handleContactSelect}
-                        onAddContact={handleAddContact}
-                      />
-                    </Suspense>
-                  )}
+              <div className="contacts-layout">
+                <ContactList
+                  addressBook={selectedAddressBook}
+                  syncService={syncService}
+                  onContactSelect={handleContactSelect}
+                  onAddContact={handleAddContact}
+                  refreshTrigger={contactRefreshTrigger}
+                />
 
-                  {selectedContact && !showContactForm && (
-                    <Suspense fallback={<div />}>
-                      <ContactDetail
-                        contact={selectedContact}
-                        onEdit={() => handleEditContact(selectedContact)}
-                        onClose={() => setSelectedContact(null)}
-                      />
-                    </Suspense>
-                  )}
+                {selectedContact && !showContactForm && (
+                  <Suspense fallback={<div />}>
+                    <ContactDetail
+                      contact={selectedContact}
+                      onEdit={() => handleEditContact(selectedContact)}
+                      onClose={() => setSelectedContact(null)}
+                    />
+                  </Suspense>
+                )}
 
-                  {showContactForm && selectedAddressBook && (
-                    <Suspense fallback={<div />}>
-                      <ContactForm
-                        contact={editingContact || undefined}
-                        addressBook={selectedAddressBook}
-                        davClient={davClient}
-                        onSave={handleContactSave}
-                        onCancel={handleContactFormCancel}
-                      />
-                    </Suspense>
-                  )}
-                </div>
+                {showContactForm && selectedAddressBook && (
+                  <Suspense fallback={<div />}>
+                    <ContactForm
+                      contact={editingContact || undefined}
+                      addressBook={selectedAddressBook}
+                      davClient={davClient}
+                      onSave={handleContactSave}
+                      onCancel={handleContactFormCancel}
+                    />
+                  </Suspense>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      </Suspense>
+      </div>
     );
   };
 

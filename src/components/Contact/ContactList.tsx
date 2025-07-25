@@ -4,11 +4,33 @@ import { SyncService } from "../../services/SyncService";
 import { LoadingOverlay } from "../common/LoadingOverlay";
 import "./ContactList.css";
 
+// Global cache to persist across component lifecycles
+const contactCache = {
+  lastFetchKey: "",
+  contacts: [] as Contact[],
+  listeners: new Set<(contacts: Contact[]) => void>(),
+  
+  updateContacts: (contacts: Contact[]) => {
+    contactCache.contacts = contacts;
+    // Notify all listeners
+    contactCache.listeners.forEach(listener => listener(contacts));
+  },
+  
+  addListener: (listener: (contacts: Contact[]) => void) => {
+    contactCache.listeners.add(listener);
+  },
+  
+  removeListener: (listener: (contacts: Contact[]) => void) => {
+    contactCache.listeners.delete(listener);
+  }
+};
+
 interface ContactListProps {
-  addressBook: AddressBook;
+  addressBook: AddressBook | null;
   syncService: SyncService;
   onContactSelect: (contact: Contact) => void;
   onAddContact: () => void;
+  refreshTrigger?: number; // Only increments when refresh is actually needed
 }
 
 const ContactList: React.FC<ContactListProps> = ({
@@ -16,32 +38,103 @@ const ContactList: React.FC<ContactListProps> = ({
   syncService,
   onContactSelect,
   onAddContact,
+  refreshTrigger,
 }) => {
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>(() => {
+    console.log(`[ContactList] Initializing with cached contacts: ${contactCache.contacts.length}`);
+    return contactCache.contacts;
+  });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sortBy, setSortBy] = useState<"name" | "org">("name");
 
+  // Fetch contacts function
+  const fetchContacts = async () => {
+    if (!addressBook) {
+      const emptyContacts: Contact[] = [];
+      setContacts(emptyContacts);
+      contactCache.updateContacts(emptyContacts);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedContacts = await syncService.getContacts(addressBook);
+      console.log(`[ContactList] Fetch completed, setting ${fetchedContacts.length} contacts`);
+      setContacts(fetchedContacts);
+      contactCache.updateContacts(fetchedContacts); // Update global cache and notify listeners
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load contacts"
+      );
+      console.error("Error fetching contacts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Use global cache to persist across component lifecycles
   useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const fetchedContacts = await syncService.getContacts(addressBook);
-        setContacts(fetchedContacts);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load contacts"
-        );
-        console.error("Error fetching contacts:", err);
-      } finally {
-        setLoading(false);
+    if (!addressBook) {
+      setContacts([]);
+      return;
+    }
+    
+    const currentKey = `${addressBook.url}-${refreshTrigger || 0}`;
+    
+    // Only fetch if the key has actually changed from the global cache
+    if (currentKey !== contactCache.lastFetchKey) {
+      console.log(`[ContactList] Fetching contacts - Key changed from "${contactCache.lastFetchKey}" to "${currentKey}"`);
+      contactCache.lastFetchKey = currentKey;
+      fetchContacts();
+    } else {
+      console.log(`[ContactList] Effect ran but key unchanged: "${currentKey}"`);
+      // Always sync with cache when key is unchanged
+      if (JSON.stringify(contactCache.contacts) !== JSON.stringify(contacts)) {
+        console.log(`[ContactList] Syncing with cached contacts (${contactCache.contacts.length} contacts)`);
+        setContacts(contactCache.contacts);
       }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addressBook?.url, refreshTrigger]);
+
+  // Set up listener for cache updates
+  useEffect(() => {
+    const handleCacheUpdate = (newContacts: Contact[]) => {
+      console.log(`[ContactList] Cache updated, received ${newContacts.length} contacts`);
+      setContacts(newContacts);
     };
 
-    fetchContacts();
-  }, [addressBook, syncService]);
+    contactCache.addListener(handleCacheUpdate);
+
+    return () => {
+      contactCache.removeListener(handleCacheUpdate);
+    };
+  }, []);
+
+  // Separate effect to ensure contacts are always in sync with cache
+  useEffect(() => {
+    if (addressBook && contactCache.contacts.length > 0 && contacts.length === 0) {
+      console.log(`[ContactList] Initial sync with cached contacts (${contactCache.contacts.length} contacts)`);
+      setContacts(contactCache.contacts);
+    }
+  }, [addressBook, contacts.length]);
+
+  // Listen for cache updates from other component instances
+  useEffect(() => {
+    const handleCacheUpdate = (updatedContacts: Contact[]) => {
+      console.log(`[ContactList] Cache updated by another instance, syncing ${updatedContacts.length} contacts`);
+      setContacts(updatedContacts);
+    };
+
+    contactCache.addListener(handleCacheUpdate);
+
+    return () => {
+      contactCache.removeListener(handleCacheUpdate);
+    };
+  }, []);
 
   const filteredContacts = contacts.filter((contact) => {
     const searchLower = searchTerm.toLowerCase();
@@ -73,6 +166,14 @@ const ContactList: React.FC<ContactListProps> = ({
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSortBy(e.target.value as "name" | "org");
   };
+
+  if (!addressBook) {
+    return (
+      <div className="contact-list-empty">
+        <p>Please select an address book to view contacts.</p>
+      </div>
+    );
+  }
 
   if (error) {
     return (

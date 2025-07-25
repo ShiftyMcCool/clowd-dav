@@ -29,7 +29,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     <header className="app-header">
       <div className="header-content">
         <div className="logo-container">
-          <h1>CalDAV/CardDAV Client</h1>
+          <h1>Clowd-DAV</h1>
           <button 
             className="mobile-menu-toggle" 
             onClick={toggleMobileMenu}

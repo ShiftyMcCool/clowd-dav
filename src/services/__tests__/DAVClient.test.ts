@@ -1858,6 +1858,38 @@ END:VCARD</card:address-data>
       expect(vcardData).toContain('ORG:New Company');
     });
 
+    it('should update contact ETag after successful update', async () => {
+      // Setup auth config
+      const authConfig = {
+        username: 'testuser',
+        password: 'testpass'
+      };
+      davClient.setAuthConfig(authConfig);
+      
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: jest.fn().mockResolvedValue(''),
+        headers: new Map([
+          ['content-type', 'text/vcard'],
+          ['etag', '"new-etag-456"']
+        ])
+      };
+      mockFetch.mockResolvedValue(mockResponse as any);
+      
+      const addressBook = { 
+        url: 'https://example.com/dav.php/addressbooks/testuser/contacts/', 
+        displayName: 'Test' 
+      };
+      const contact = { uid: 'test-contact', fn: 'John Doe', etag: 'abc123' };
+      
+      await davClient.updateContact(addressBook, contact);
+      
+      // Verify that the contact's ETag was updated with the new value
+      expect(contact.etag).toBe('new-etag-456');
+    });
+
     it('should throw error when ETag is missing', async () => {
       const addressBook = { url: 'test', displayName: 'test' };
       const contact = { uid: 'test', fn: 'test' }; // No etag
