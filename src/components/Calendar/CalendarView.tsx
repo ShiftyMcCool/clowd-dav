@@ -16,9 +16,11 @@ interface CalendarViewProps {
   loading?: boolean;
   currentDate?: Date;
   onDateChange?: (date: Date) => void;
+  viewType?: ViewType;
+  onViewTypeChange?: (viewType: ViewType) => void;
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = React.memo(({
+export const CalendarView: React.FC<CalendarViewProps> = ({
   calendars,
   events,
   onDateRangeChange,
@@ -26,16 +28,19 @@ export const CalendarView: React.FC<CalendarViewProps> = React.memo(({
   onCreateEvent,
   loading = false,
   currentDate: propCurrentDate,
-  onDateChange
+  onDateChange,
+  viewType: propViewType = 'month',
+  onViewTypeChange
 }) => {
   const [currentDate, setCurrentDate] = useState(() => {
     console.log('CalendarView: useState initializer called, propCurrentDate:', propCurrentDate);
     return propCurrentDate || new Date();
   });
-  const [viewType, setViewType] = useState<ViewType>('month');
+  const viewType = propViewType;
   const previousDateRangeRef = useRef<DateRange | null>(null);
   
   console.log('CalendarView render - currentDate:', currentDate, 'viewType:', viewType);
+  console.log('CalendarView props - propViewType:', propViewType, 'onViewTypeChange:', !!onViewTypeChange);
 
   // Update internal state when prop changes
   useEffect(() => {
@@ -89,7 +94,7 @@ export const CalendarView: React.FC<CalendarViewProps> = React.memo(({
         dateRange.start.getTime() !== previousDateRange.start.getTime() ||
         dateRange.end.getTime() !== previousDateRange.end.getTime();
     
-    console.log('CalendarView: Date range hasChanged:', hasChanged);
+    console.log('CalendarView: Date range hasChanged:', hasChanged, 'previous:', previousDateRange);
     
     if (hasChanged) {
       previousDateRangeRef.current = { 
@@ -106,8 +111,16 @@ export const CalendarView: React.FC<CalendarViewProps> = React.memo(({
     const newDate = new Date(currentDate);
 
     if (direction === 'today') {
-      console.log('CalendarView: Setting to today');
-      setCurrentDate(new Date());
+      const today = new Date();
+      console.log('CalendarView: Setting to today:', today);
+      console.log('CalendarView: Current date before:', currentDate);
+      console.log('CalendarView: Are dates different?', currentDate.toDateString() !== today.toDateString());
+      setCurrentDate(today);
+      
+      // Notify parent of date change
+      if (onDateChange) {
+        onDateChange(today);
+      }
       return;
     }
 
@@ -135,7 +148,10 @@ export const CalendarView: React.FC<CalendarViewProps> = React.memo(({
   };
 
   const handleViewChange = (newView: ViewType) => {
-    setViewType(newView);
+    console.log('CalendarView: handleViewChange called with:', newView, 'current viewType:', viewType);
+    if (onViewTypeChange) {
+      onViewTypeChange(newView);
+    }
   };
 
   const handleDateClick = (date: Date) => {
@@ -199,4 +215,4 @@ export const CalendarView: React.FC<CalendarViewProps> = React.memo(({
       )}
     </div>
   );
-});
+};

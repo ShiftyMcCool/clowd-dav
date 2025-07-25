@@ -109,6 +109,7 @@ const AppContent: React.FC = () => {
   const [calendarCurrentDate, setCalendarCurrentDate] = useState<Date>(
     new Date()
   );
+  const [calendarViewType, setCalendarViewType] = useState<"month" | "week" | "day">("month");
 
   // Contact state
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
@@ -667,6 +668,8 @@ const AppContent: React.FC = () => {
               loading={false}
               currentDate={calendarCurrentDate}
               onDateChange={setCalendarCurrentDate}
+              viewType={calendarViewType}
+              onViewTypeChange={setCalendarViewType}
             />
 
             {/* Event Form Modal */}
@@ -690,6 +693,7 @@ const AppContent: React.FC = () => {
     return Component;
   }, [
     calendarCurrentDate,
+    calendarViewType,
     calendars,
     editingEvent,
     events,
