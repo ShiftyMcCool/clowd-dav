@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { ThemeToggle } from '../common/ThemeToggle';
-import './Navigation.css';
+import React, { useState } from "react";
+import { ThemeToggle } from "../common/ThemeToggle";
+import "./Navigation.css";
 
 interface NavigationProps {
-  currentView: 'calendar' | 'contacts';
-  onViewChange: (view: 'calendar' | 'contacts') => void;
+  currentView: "calendar" | "contacts";
+  onViewChange: (view: "calendar" | "contacts") => void;
   username?: string;
   onLogout: () => void;
 }
@@ -13,7 +13,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   currentView,
   onViewChange,
   username,
-  onLogout
+  onLogout,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -21,7 +21,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const handleViewChange = (view: 'calendar' | 'contacts') => {
+  const handleViewChange = (view: "calendar" | "contacts") => {
     onViewChange(view);
     setMobileMenuOpen(false);
   };
@@ -30,9 +30,8 @@ export const Navigation: React.FC<NavigationProps> = ({
     <header className="app-header">
       <div className="header-content">
         <div className="logo-container">
-          <h1>Clowd-DAV</h1>
-          <button 
-            className="mobile-menu-toggle" 
+          <button
+            className="mobile-menu-toggle"
             onClick={toggleMobileMenu}
             aria-label="Toggle navigation menu"
           >
@@ -40,27 +39,35 @@ export const Navigation: React.FC<NavigationProps> = ({
           </button>
         </div>
 
-        <nav className={`main-navigation ${mobileMenuOpen ? 'mobile-open' : ''}`}>
+        <nav
+          className={`main-navigation ${mobileMenuOpen ? "mobile-open" : ""}`}
+        >
           <ul className="nav-links">
             <li>
-              <button 
-                className={`nav-link ${currentView === 'calendar' ? 'active' : ''}`}
-                onClick={() => handleViewChange('calendar')}
+              <button
+                className={`nav-link ${
+                  currentView === "calendar" ? "active" : ""
+                }`}
+                onClick={() => handleViewChange("calendar")}
               >
                 <span className="nav-icon calendar-icon"></span>
                 Calendar
               </button>
             </li>
             <li>
-              <button 
-                className={`nav-link ${currentView === 'contacts' ? 'active' : ''}`}
-                onClick={() => handleViewChange('contacts')}
+              <button
+                className={`nav-link ${
+                  currentView === "contacts" ? "active" : ""
+                }`}
+                onClick={() => handleViewChange("contacts")}
               >
                 <span className="nav-icon contacts-icon"></span>
                 Contacts
               </button>
             </li>
           </ul>
+
+          <h1>Clowd-DAV</h1>
 
           <div className="nav-controls">
             <ThemeToggle />
