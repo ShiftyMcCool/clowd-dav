@@ -21,50 +21,10 @@
 
 /* Removed conflicting spinner styles - using global LoadingOverlay instead */
 
-.fab-create-event {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: var(--color-primary);
-  color: var(--color-text-inverse);
-  border: none;
-  font-size: 24px;
-  font-weight: 300;
-  cursor: pointer;
-  box-shadow: var(--shadow-lg);
-  transition: all 0.2s ease;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.fab-create-event:hover {
-  background-color: var(--color-primary-hover);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-
-.fab-create-event:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-md);
-}
-
 /* Responsive design */
 @media (max-width: 768px) {
   .calendar-content {
     padding: 0 0.5rem;
-  }
-  
-  .fab-create-event {
-    bottom: 20px;
-    right: 20px;
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
   }
 }
 
@@ -75,13 +35,5 @@
   
   .calendar-content {
     padding: 0 0.25rem;
-  }
-  
-  .fab-create-event {
-    bottom: 16px;
-    right: 16px;
-    width: 44px;
-    height: 44px;
-    font-size: 18px;
   }
 }

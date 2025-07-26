@@ -203,18 +203,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           />
         )}
       </div>
-
-      {/* Floating Action Button for creating events (month/week view) */}
-      {(viewType === 'month' || viewType === 'week') && onCreateEvent && (
-        <button 
-          className="fab-create-event"
-          onClick={() => onCreateEvent(currentDate)}
-          aria-label="Create new event"
-          title="Create new event"
-        >
-          +
-        </button>
-      )}
     </div>
   );
 };
