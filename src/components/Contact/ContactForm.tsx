@@ -13,7 +13,7 @@ interface ContactFormProps {
   onDelete?: (contact: Contact) => void;
 }
 
-const ContactForm: React.FC<ContactFormProps> = ({
+export const ContactForm: React.FC<ContactFormProps> = ({
   contact,
   addressBook,
   davClient,
@@ -194,12 +194,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
   };
 
   return (
-    <div className="contact-form-container">
-      <div className="contact-form-header">
-        <h2>{isEditing ? 'Edit Contact' : 'Add New Contact'}</h2>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="contact-form">
+    <form onSubmit={handleSubmit} className="contact-form">
         <div className="form-group">
           <label htmlFor="firstName">First Name</label>
           <input
@@ -345,8 +340,5 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </div>
         </div>
       </form>
-    </div>
   );
 };
-
-export default ContactForm;

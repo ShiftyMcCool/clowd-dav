@@ -41,7 +41,7 @@ import {
   ErrorMessage as ErrorMessageType,
 } from "./services/ErrorHandlingService";
 import { useSync } from "./hooks/useSync";
-import { ContactList } from "./components/Contact";
+import { ContactCardGrid } from "./components/Contact";
 import { CalendarSidebar } from "./components/Calendar/CalendarSidebar";
 import { assignDefaultColors } from "./utils/calendarColors";
 import "./styles/themes.css";
@@ -51,8 +51,7 @@ import "./App.css";
 const SetupForm = lazy(() => import("./components/SetupForm").then(module => ({ default: module.SetupForm })));
 const CalendarView = lazy(() => import("./components/Calendar/CalendarView").then(module => ({ default: module.CalendarView })));
 const EventForm = lazy(() => import("./components/Calendar/EventForm").then(module => ({ default: module.EventForm })));
-const ContactDetail = lazy(() => import("./components/Contact").then(module => ({ default: module.ContactDetail })));
-const ContactForm = lazy(() => import("./components/Contact").then(module => ({ default: module.ContactForm })));
+
 
 // Protected route component
 const ProtectedRoute: React.FC<{
@@ -128,9 +127,7 @@ const AppContent: React.FC = () => {
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
   const [selectedAddressBook, setSelectedAddressBook] =
     useState<AddressBook | null>(null);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [showContactForm, setShowContactForm] = useState(false);
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+
   const [contactRefreshTrigger, setContactRefreshTrigger] = useState(0);
 
   // Error handling and offline state
@@ -581,121 +578,13 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Handle contact selection
-  const handleContactSelect = (contact: Contact) => {
-    setSelectedContact(contact);
-    setEditingContact(null);
-    setShowContactForm(false);
-  };
 
 
 
-
-
-  // Handle adding a new contact
-  const handleAddContact = () => {
-    setSelectedContact(null);
-    setEditingContact(null);
-    setShowContactForm(true);
-  };
-
-  // Handle editing a contact
-  const handleEditContact = (contact: Contact) => {
-    setEditingContact(contact);
-    setShowContactForm(true);
-  };
-
-  // Handle saving a contact (create or update)
-  const handleContactSave = async (contactData: Contact) => {
-    if (!selectedAddressBook) return;
-
-    try {
-      showLoading(
-        editingContact ? "Updating contact..." : "Creating contact..."
-      );
-
-      if (editingContact) {
-        // Update existing contact using sync service
-        await sync.updateContact(selectedAddressBook, contactData);
-      } else {
-        // Create new contact using sync service
-        await sync.createContact(selectedAddressBook, contactData);
-      }
-
-      // Close form and reset state
-      setShowContactForm(false);
-      setEditingContact(null);
-      
-      // Update selected contact with the saved data (which has updated ETag)
-      if (editingContact) {
-        setSelectedContact(contactData);
-      } else {
-        setSelectedContact(contactData);
-      }
-      
-      // Trigger contact list refresh to get updated ETags
-      setContactRefreshTrigger(prev => prev + 1);
-    } catch (error) {
-      console.error("Error saving contact:", error);
-
-      // Report error but don't throw it
-      errorService.reportError(
-        `Failed to save contact: ${errorService.formatErrorMessage(error)}`,
-        "error"
-      );
-
-      // Don't close the form so the user can try again
-      throw error; // Re-throw to let the form handle the error display
-    } finally {
-      hideLoading();
-    }
-  };
-
-  // Handle contact form cancel
-  const handleContactFormCancel = () => {
-    setShowContactForm(false);
-    setEditingContact(null);
-  };
-
-  // Handle deleting a contact
-  const handleContactDelete = async (contact: Contact) => {
-    if (!selectedAddressBook) return;
-
-    try {
-      showLoading("Deleting contact...", "medium");
-
-      // Delete contact using sync service
-      await sync.deleteContact(selectedAddressBook, contact);
-
-      // Close form and reset state
-      setShowContactForm(false);
-      setEditingContact(null);
-      setSelectedContact(null);
-      
-      // Trigger contact list refresh
-      setContactRefreshTrigger(prev => prev + 1);
-    } catch (error) {
-      console.error("Error deleting contact:", error);
-
-      // Report error
-      errorService.reportError(
-        `Failed to delete contact: ${errorService.formatErrorMessage(error)}`,
-        "error"
-      );
-
-      // Re-throw to let the form handle the error display
-      throw error;
-    } finally {
-      hideLoading();
-    }
-  };
 
   // Handle address book change
   const handleAddressBookChange = (addressBook: AddressBook) => {
     setSelectedAddressBook(addressBook);
-    setSelectedContact(null);
-    setEditingContact(null);
-    setShowContactForm(false);
   };
 
   const handleLogout = () => {
@@ -706,9 +595,6 @@ const AppContent: React.FC = () => {
     setEvents([]);
     setAddressBooks([]);
     setSelectedAddressBook(null);
-    setSelectedContact(null);
-    setEditingContact(null);
-    setShowContactForm(false);
     // Reset calendar sidebar state
     setVisibleCalendars(new Set());
     setCalendarSidebarOpen(window.innerWidth > 1024);
@@ -826,36 +712,14 @@ const AppContent: React.FC = () => {
               </div>
 
               <div className="contacts-layout">
-                <ContactList
+                <ContactCardGrid
                   addressBook={selectedAddressBook}
                   syncService={syncService}
-                  onContactSelect={handleContactSelect}
-                  onAddContact={handleAddContact}
+                  davClient={davClient}
                   refreshTrigger={contactRefreshTrigger}
                 />
 
-                {selectedContact && !showContactForm && (
-                  <Suspense fallback={<div />}>
-                    <ContactDetail
-                      contact={selectedContact}
-                      onEdit={() => handleEditContact(selectedContact)}
-                      onClose={() => setSelectedContact(null)}
-                    />
-                  </Suspense>
-                )}
 
-                {showContactForm && selectedAddressBook && (
-                  <Suspense fallback={<div />}>
-                    <ContactForm
-                      contact={editingContact || undefined}
-                      addressBook={selectedAddressBook}
-                      davClient={davClient}
-                      onSave={handleContactSave}
-                      onCancel={handleContactFormCancel}
-                      onDelete={editingContact ? handleContactDelete : undefined}
-                    />
-                  </Suspense>
-                )}
               </div>
             </div>
           )}

@@ -8,27 +8,17 @@ interface ContactDetailProps {
   onClose: () => void;
 }
 
-const ContactDetail: React.FC<ContactDetailProps> = ({ contact, onEdit, onClose }) => {
+export const ContactDetail: React.FC<ContactDetailProps> = ({ contact, onEdit, onClose }) => {
   return (
     <div className="contact-detail-container">
-      <div className="contact-detail-header">
-        <h2>Contact Details</h2>
-        <div className="contact-detail-actions">
-          <button 
-            className="contact-edit-button" 
-            onClick={() => onEdit(contact)}
-            aria-label="Edit contact"
-          >
-            Edit
-          </button>
-          <button 
-            className="contact-close-button" 
-            onClick={onClose}
-            aria-label="Close contact details"
-          >
-            Close
-          </button>
-        </div>
+      <div className="contact-detail-actions">
+        <button 
+          className="contact-edit-button" 
+          onClick={() => onEdit(contact)}
+          aria-label="Edit contact"
+        >
+          Edit Contact
+        </button>
       </div>
 
       <div className="contact-detail-content">
@@ -75,5 +65,3 @@ const ContactDetail: React.FC<ContactDetailProps> = ({ contact, onEdit, onClose 
     </div>
   );
 };
-
-export default ContactDetail;

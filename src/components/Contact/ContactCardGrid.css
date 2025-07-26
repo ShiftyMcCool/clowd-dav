@@ -1,0 +1,203 @@
+.contact-grid-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.contact-grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+}
+
+.contact-grid-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+}
+
+.add-contact-button {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-contact-button:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.contact-grid-controls {
+  display: flex;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  gap: 16px;
+  align-items: center;
+  background: var(--color-bg-primary);
+}
+
+.contact-search-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease;
+}
+
+.contact-search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+}
+
+.contact-sort-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.contact-sort-control select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.contact-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  background: var(--color-bg-secondary);
+}
+
+.contact-grid-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--color-bg-secondary);
+}
+
+.contact-grid-empty p {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+}
+
+.create-first-contact-button {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.create-first-contact-button:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.contact-grid-error {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: var(--color-error);
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--color-bg-secondary);
+}
+
+.contact-grid-error p {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+}
+
+.contact-grid-error button {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.contact-grid-error button:hover {
+  background: var(--color-bg-secondary);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .contact-cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .contact-grid-header,
+  .contact-grid-controls {
+    padding: 12px 16px;
+  }
+  
+  .contact-grid-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .contact-sort-control {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 480px) {
+  .contact-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .contact-grid-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .add-contact-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

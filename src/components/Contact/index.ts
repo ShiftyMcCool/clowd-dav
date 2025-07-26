@@ -1,3 +1,4 @@
 export { default as ContactList } from './ContactList';
-export { default as ContactDetail } from './ContactDetail';
-export { default as ContactForm } from './ContactForm';
+export { ContactCardGrid } from './ContactCardGrid';
+export { ContactDetail } from './ContactDetail';
+export { ContactForm } from './ContactForm';
