@@ -387,13 +387,13 @@ export const SetupForm: React.FC<SetupFormProps> = ({
         <summary>Common server examples</summary>
         <div className="examples-list">
           <div>
-            <strong>Baikal:</strong> /baikal/cal.php/calendars/username/
+            <strong>Baikal:</strong> https://your-server.com/dav.php/calendars/username/
           </div>
           <div>
-            <strong>Radicale:</strong> /username/
+            <strong>Radicale:</strong> https://your-server.com/radicale/
           </div>
           <div>
-            <strong>Nextcloud:</strong> /remote.php/dav/
+            <strong>Nextcloud:</strong> https://your-server.com/remote.php/dav/principals/users/username/
           </div>
         </div>
       </details>
