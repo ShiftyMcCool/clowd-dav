@@ -1,10 +1,12 @@
 import React from 'react';
-import { CalendarEvent } from '../../types/dav';
+import { CalendarEvent, Calendar } from '../../types/dav';
+import { getEventCalendarColor } from '../../utils/calendarColors';
 import './EventList.css';
 
 interface EventListProps {
   date: Date;
   events: CalendarEvent[];
+  calendars: Calendar[];
   onEventClick?: (event: CalendarEvent) => void;
   onCreateEvent?: () => void;
 }
@@ -12,6 +14,7 @@ interface EventListProps {
 export const EventList: React.FC<EventListProps> = ({
   date,
   events,
+  calendars,
   onEventClick,
   onCreateEvent
 }) => {
@@ -89,40 +92,46 @@ export const EventList: React.FC<EventListProps> = ({
           </div>
         ) : (
           <div className="events-list">
-            {sortedEvents.map((event, index) => (
-              <div
-                key={`${event.uid}-${index}`}
-                className="event-list-item"
-                onClick={() => handleEventClick(event)}
-              >
-                <div className="event-time-column">
-                  {isAllDay(event) ? (
-                    <span className="all-day-badge">All Day</span>
-                  ) : (
-                    <span className="event-time">
-                      {formatDuration(new Date(event.dtstart), new Date(event.dtend))}
-                    </span>
-                  )}
+            {sortedEvents.map((event, index) => {
+              const eventColor = getEventCalendarColor(event.calendarUrl, calendars);
+              return (
+                <div
+                  key={`${event.uid}-${index}`}
+                  className="event-list-item"
+                  style={{ borderLeft: `4px solid ${eventColor}` }}
+                  onClick={() => handleEventClick(event)}
+                >
+                  <div className="event-color-indicator" style={{ backgroundColor: eventColor }}></div>
+                  
+                  <div className="event-time-column">
+                    {isAllDay(event) ? (
+                      <span className="all-day-badge">All Day</span>
+                    ) : (
+                      <span className="event-time">
+                        {formatDuration(new Date(event.dtstart), new Date(event.dtend))}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="event-details-column">
+                    <h4 className="event-summary">{event.summary}</h4>
+                    {event.location && (
+                      <p className="event-location">
+                        📍 {event.location}
+                      </p>
+                    )}
+                    {event.description && (
+                      <p className="event-description">
+                        {event.description.length > 100 
+                          ? `${event.description.substring(0, 100)}...` 
+                          : event.description
+                        }
+                      </p>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="event-details-column">
-                  <h4 className="event-summary">{event.summary}</h4>
-                  {event.location && (
-                    <p className="event-location">
-                      📍 {event.location}
-                    </p>
-                  )}
-                  {event.description && (
-                    <p className="event-description">
-                      {event.description.length > 100 
-                        ? `${event.description.substring(0, 100)}...` 
-                        : event.description
-                      }
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

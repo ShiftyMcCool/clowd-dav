@@ -186,6 +186,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             currentDate={currentDate}
             viewType={viewType}
             events={events}
+            calendars={calendars}
             onEventClick={onEventClick}
             onDateClick={handleDateClick}
           />
@@ -196,6 +197,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               const eventDate = new Date(event.dtstart);
               return eventDate.toDateString() === currentDate.toDateString();
             })}
+            calendars={calendars}
             onEventClick={onEventClick}
             onCreateEvent={() => onCreateEvent?.(currentDate)}
           />

@@ -1,12 +1,14 @@
 import React from 'react';
-import { CalendarEvent } from '../../types/dav';
+import { CalendarEvent, Calendar } from '../../types/dav';
 import { ViewType } from './CalendarView';
+import { getEventCalendarColor } from '../../utils/calendarColors';
 import './CalendarGrid.css';
 
 interface CalendarGridProps {
   currentDate: Date;
   viewType: ViewType;
   events: CalendarEvent[];
+  calendars: Calendar[];
   onEventClick?: (event: CalendarEvent) => void;
   onDateClick?: (date: Date) => void;
 }
@@ -15,6 +17,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   currentDate,
   viewType,
   events,
+  calendars,
   onEventClick,
   onDateClick
 }) => {
@@ -125,19 +128,27 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
                 onClick={() => handleDateClick(date)}
               >
                 <div className="day-events">
-                  {dayEvents.map((event, eventIndex) => (
-                    <div
-                      key={`${event.uid}-${eventIndex}`}
-                      className="event-item week-event"
-                      onClick={(e) => handleEventClick(event, e)}
-                      title={`${event.summary}\n${formatTime(new Date(event.dtstart))} - ${formatTime(new Date(event.dtend))}`}
-                    >
-                      <div className="event-time">
-                        {formatTime(new Date(event.dtstart))}
+                  {dayEvents.map((event, eventIndex) => {
+                    const eventColor = getEventCalendarColor(event.calendarUrl, calendars);
+                    return (
+                      <div
+                        key={`${event.uid}-${eventIndex}`}
+                        className="event-item week-event"
+                        style={{ 
+                          backgroundColor: eventColor,
+                          borderLeft: `4px solid ${eventColor}`,
+                          color: '#ffffff'
+                        }}
+                        onClick={(e) => handleEventClick(event, e)}
+                        title={`${event.summary}\n${formatTime(new Date(event.dtstart))} - ${formatTime(new Date(event.dtend))}`}
+                      >
+                        <div className="event-time">
+                          {formatTime(new Date(event.dtstart))}
+                        </div>
+                        <div className="event-title">{event.summary}</div>
                       </div>
-                      <div className="event-title">{event.summary}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -171,16 +182,24 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
                 {date.getDate()}
               </div>
               <div className="day-events">
-                {dayEvents.slice(0, 3).map((event, eventIndex) => (
-                  <div
-                    key={`${event.uid}-${eventIndex}`}
-                    className="event-item month-event"
-                    onClick={(e) => handleEventClick(event, e)}
-                    title={`${event.summary}\n${formatTime(new Date(event.dtstart))} - ${formatTime(new Date(event.dtend))}`}
-                  >
-                    <span className="event-title">{event.summary}</span>
-                  </div>
-                ))}
+                {dayEvents.slice(0, 3).map((event, eventIndex) => {
+                  const eventColor = getEventCalendarColor(event.calendarUrl, calendars);
+                  return (
+                    <div
+                      key={`${event.uid}-${eventIndex}`}
+                      className="event-item month-event"
+                      style={{ 
+                        backgroundColor: eventColor,
+                        borderLeft: `3px solid ${eventColor}`,
+                        color: '#ffffff'
+                      }}
+                      onClick={(e) => handleEventClick(event, e)}
+                      title={`${event.summary}\n${formatTime(new Date(event.dtstart))} - ${formatTime(new Date(event.dtend))}`}
+                    >
+                      <span className="event-title">{event.summary}</span>
+                    </div>
+                  );
+                })}
                 {dayEvents.length > 3 && (
                   <div className="more-events">
                     +{dayEvents.length - 3} more

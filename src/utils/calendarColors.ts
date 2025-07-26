@@ -43,3 +43,18 @@ export function getCalendarColor(calendarUrl: string, existingColor?: string): s
   const colorIndex = Math.abs(hash) % DEFAULT_COLORS.length;
   return DEFAULT_COLORS[colorIndex];
 }
+
+/**
+ * Gets calendar color from a list of calendars by URL
+ */
+export function getEventCalendarColor(
+  calendarUrl: string | undefined, 
+  calendars: { url: string; color?: string }[]
+): string {
+  if (!calendarUrl) {
+    return DEFAULT_COLORS[0]; // Default color for events without calendar URL
+  }
+  
+  const calendar = calendars.find(cal => cal.url === calendarUrl);
+  return calendar?.color || getCalendarColor(calendarUrl);
+}

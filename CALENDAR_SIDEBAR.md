@@ -36,6 +36,10 @@ The Calendar Sidebar is a new feature that allows users to show and hide individ
 - Calendars use colors provided by the CalDAV server when available
 - Default colors are automatically assigned to calendars without server-provided colors
 - Colors are consistent across sessions and calendar reloads
+- **Event Color-Coding**: All calendar events are automatically color-coded to match their respective calendar colors
+  - Month view: Events have colored backgrounds and left borders
+  - Week view: Events have colored backgrounds and left borders
+  - Day view: Events have colored left borders and color indicators
 
 ## Technical Implementation
 
@@ -59,6 +63,20 @@ Events are filtered in real-time based on visible calendars:
 events={events.filter(event => 
   event.calendarUrl ? visibleCalendars.has(event.calendarUrl) : true
 )}
+```
+
+### Event Color-Coding
+Events are automatically colored based on their calendar:
+```typescript
+// Get event color from calendar
+const eventColor = getEventCalendarColor(event.calendarUrl, calendars);
+
+// Apply color styling
+<div style={{ 
+  backgroundColor: eventColor,
+  borderLeft: `4px solid ${eventColor}`,
+  color: '#ffffff'
+}}>
 ```
 
 ## Default Behavior
