@@ -42,6 +42,8 @@ import {
 } from "./services/ErrorHandlingService";
 import { useSync } from "./hooks/useSync";
 import { ContactList } from "./components/Contact";
+import { CalendarSidebar } from "./components/Calendar/CalendarSidebar";
+import { assignDefaultColors } from "./utils/calendarColors";
 import "./styles/themes.css";
 import "./App.css";
 
@@ -115,6 +117,12 @@ const AppContent: React.FC = () => {
     new Date()
   );
   const [calendarViewType, setCalendarViewType] = useState<"month" | "week" | "day">("month");
+  
+  // Calendar sidebar state
+  const [calendarSidebarOpen, setCalendarSidebarOpen] = useState(() => {
+    return window.innerWidth > 1024; // Open by default on larger screens
+  });
+  const [visibleCalendars, setVisibleCalendars] = useState<Set<string>>(new Set());
 
   // Contact state
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
@@ -166,7 +174,12 @@ const AppContent: React.FC = () => {
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
 
       console.log("Setting calendars:", cachedCalendars.length);
-      setCalendars(cachedCalendars);
+      const calendarsWithColors = assignDefaultColors(cachedCalendars);
+      setCalendars(calendarsWithColors);
+      
+      // Initialize all calendars as visible by default
+      setVisibleCalendars(new Set(calendarsWithColors.map(cal => cal.url)));
+      
       console.log("Setting address books:", cachedAddressBooks.length);
       setAddressBooks(cachedAddressBooks);
 
@@ -696,20 +709,14 @@ const AppContent: React.FC = () => {
     setSelectedContact(null);
     setEditingContact(null);
     setShowContactForm(false);
+    // Reset calendar sidebar state
+    setVisibleCalendars(new Set());
+    setCalendarSidebarOpen(window.innerWidth > 1024);
     // Optionally clear stored credentials
     // authManager.clearCredentials();
   };
 
-  const location = useLocation();
 
-  // Update current view based on location
-  useEffect(() => {
-    if (location.pathname === "/calendar") {
-      setCurrentView("calendar");
-    } else if (location.pathname === "/contacts") {
-      setCurrentView("contacts");
-    }
-  }, [location.pathname]);
 
   // Setup component
   const SetupComponent = () => {
@@ -735,7 +742,9 @@ const AppContent: React.FC = () => {
           <div className="view-container">
             <CalendarView
               calendars={calendars}
-              events={events}
+              events={events.filter(event => 
+                event.calendarUrl ? visibleCalendars.has(event.calendarUrl) : true
+              )}
               onDateRangeChange={handleDateRangeChange}
               onEventClick={handleEventClick}
               onCreateEvent={handleCreateEvent}
@@ -772,6 +781,7 @@ const AppContent: React.FC = () => {
     calendars,
     editingEvent,
     events,
+    visibleCalendars,
     handleCreateEvent,
     handleDateRangeChange,
     handleEventClick,
@@ -854,6 +864,45 @@ const AppContent: React.FC = () => {
     );
   };
 
+  // Calendar sidebar handlers
+  const handleCalendarToggle = useCallback((calendarUrl: string) => {
+    setVisibleCalendars(prev => {
+      const newVisible = new Set(prev);
+      if (newVisible.has(calendarUrl)) {
+        newVisible.delete(calendarUrl);
+      } else {
+        newVisible.add(calendarUrl);
+      }
+      return newVisible;
+    });
+  }, []);
+
+  const handleCalendarSidebarToggle = useCallback(() => {
+    setCalendarSidebarOpen(prev => !prev);
+  }, []);
+
+  // Handle window resize for calendar sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1024) {
+        setCalendarSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Update current view based on location
+  const location = useLocation();
+  useEffect(() => {
+    if (location.pathname.includes('/calendar')) {
+      setCurrentView('calendar');
+    } else if (location.pathname.includes('/contacts')) {
+      setCurrentView('contacts');
+    }
+  }, [location.pathname]);
+
   if (initialLoading) {
     return (
       <div className="app-loading">
@@ -885,7 +934,20 @@ const AppContent: React.FC = () => {
       const cachedCalendars = CacheService.getCachedCalendars();
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
 
-      setCalendars(cachedCalendars);
+      const calendarsWithColors = assignDefaultColors(cachedCalendars);
+      setCalendars(calendarsWithColors);
+      
+      // Update visible calendars to include any new calendars
+      setVisibleCalendars(prev => {
+        const newVisible = new Set(prev);
+        calendarsWithColors.forEach(cal => {
+          if (!newVisible.has(cal.url)) {
+            newVisible.add(cal.url); // New calendars are visible by default
+          }
+        });
+        return newVisible;
+      });
+      
       setAddressBooks(cachedAddressBooks);
 
       // Refresh current view
@@ -911,7 +973,24 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      <main className="app-main">
+      {/* Calendar Sidebar - only show when authenticated and on calendar view */}
+      {isAuthenticated && currentView === "calendar" && (
+        <CalendarSidebar
+          calendars={calendars}
+          visibleCalendars={visibleCalendars}
+          onCalendarToggle={handleCalendarToggle}
+          isOpen={calendarSidebarOpen}
+          onToggle={handleCalendarSidebarToggle}
+        />
+      )}
+
+      <main className={`app-main ${
+        isAuthenticated && currentView === "calendar" 
+          ? calendarSidebarOpen 
+            ? "calendar-sidebar-open" 
+            : "calendar-sidebar-collapsed"
+          : ""
+      }`}>
         <Routes>
           <Route
             path="/setup"
