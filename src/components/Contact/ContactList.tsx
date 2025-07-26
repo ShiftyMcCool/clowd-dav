@@ -140,6 +140,8 @@ const ContactList: React.FC<ContactListProps> = ({
     const searchLower = searchTerm.toLowerCase();
     return (
       contact.fn.toLowerCase().includes(searchLower) ||
+      contact.firstName?.toLowerCase().includes(searchLower) ||
+      contact.lastName?.toLowerCase().includes(searchLower) ||
       contact.org?.toLowerCase().includes(searchLower) ||
       contact.email?.some((email) =>
         email.toLowerCase().includes(searchLower)

@@ -26,19 +26,22 @@ const ContactForm: React.FC<ContactFormProps> = ({
   
   // Initialize form state
   const [formData, setFormData] = useState<{
-    fn: string;
+    firstName: string;
+    lastName: string;
     org: string;
     email: string[];
     tel: string[];
   }>({
-    fn: contact?.fn || '',
+    firstName: contact?.firstName || '',
+    lastName: contact?.lastName || '',
     org: contact?.org || '',
     email: contact?.email || [''],
     tel: contact?.tel || ['']
   });
   
   const [errors, setErrors] = useState<{
-    fn?: string;
+    firstName?: string;
+    lastName?: string;
     email?: string[];
   }>({});
   
@@ -48,13 +51,15 @@ const ContactForm: React.FC<ContactFormProps> = ({
   // Validate form data
   const validateForm = (): boolean => {
     const newErrors: {
-      fn?: string;
+      firstName?: string;
+      lastName?: string;
       email?: string[];
     } = {};
     
-    // Full name is required
-    if (!formData.fn.trim()) {
-      newErrors.fn = 'Full name is required';
+    // At least first name or last name is required
+    if (!formData.firstName.trim() && !formData.lastName.trim()) {
+      newErrors.firstName = 'First name or last name is required';
+      newErrors.lastName = 'First name or last name is required';
     }
     
     // Validate email format
@@ -115,9 +120,12 @@ const ContactForm: React.FC<ContactFormProps> = ({
       };
       
       // Create new contact object
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       const contactData: Contact = {
         uid: contact?.uid || `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        fn: filteredData.fn,
+        fn: fullName || 'Unnamed Contact',
+        firstName: formData.firstName || undefined,
+        lastName: formData.lastName || undefined,
         org: filteredData.org || undefined,
         email: filteredData.email.length > 0 ? filteredData.email : undefined,
         tel: filteredData.tel.length > 0 ? filteredData.tel : undefined,
@@ -193,17 +201,29 @@ const ContactForm: React.FC<ContactFormProps> = ({
       
       <form onSubmit={handleSubmit} className="contact-form">
         <div className="form-group">
-          <label htmlFor="fn">Full Name *</label>
+          <label htmlFor="firstName">First Name</label>
           <input
             type="text"
-            id="fn"
-            name="fn"
-            value={formData.fn}
+            id="firstName"
+            name="firstName"
+            value={formData.firstName}
             onChange={handleInputChange}
-            className={errors.fn ? 'error' : ''}
-            required
+            className={errors.firstName ? 'error' : ''}
           />
-          {errors.fn && <div className="error-message">{errors.fn}</div>}
+          {errors.firstName && <div className="error-message">{errors.firstName}</div>}
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="lastName">Last Name</label>
+          <input
+            type="text"
+            id="lastName"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleInputChange}
+            className={errors.lastName ? 'error' : ''}
+          />
+          {errors.lastName && <div className="error-message">{errors.lastName}</div>}
         </div>
         
         <div className="form-group">

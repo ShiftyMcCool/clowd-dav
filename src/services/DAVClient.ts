@@ -286,10 +286,13 @@ export class DAVClient implements IDAVClient {
 
     try {
       const response = await this.propfind(discoveryUrl, propfindBody, "1");
-      
+
       // Use the server base URL (without the path) for constructing full URLs
       const serverBaseUrl = new URL(this.authConfig.caldavUrl).origin;
-      const calendars = this.parseCalendarDiscoveryResponse(response.data, serverBaseUrl);
+      const calendars = this.parseCalendarDiscoveryResponse(
+        response.data,
+        serverBaseUrl
+      );
       return calendars;
     } catch (error) {
       if (error instanceof Error) {
@@ -369,7 +372,10 @@ export class DAVClient implements IDAVClient {
       const response = await this.propfind(discoveryUrl, propfindBody, "1");
       // Use the server base URL (without the path) for constructing full URLs
       const serverBaseUrl = new URL(this.authConfig.carddavUrl).origin;
-      return this.parseAddressBookDiscoveryResponse(response.data, serverBaseUrl);
+      return this.parseAddressBookDiscoveryResponse(
+        response.data,
+        serverBaseUrl
+      );
     } catch (error) {
       if (error instanceof Error) {
         // If it's already a parsing error, re-throw as is
@@ -657,7 +663,11 @@ export class DAVClient implements IDAVClient {
       const response = await this.delete(eventUrl, headers);
 
       // Check if deletion was successful (200 OK, 204 No Content, or 404 Not Found)
-      if (response.status !== 200 && response.status !== 204 && response.status !== 404) {
+      if (
+        response.status !== 200 &&
+        response.status !== 204 &&
+        response.status !== 404
+      ) {
         if (response.status === 412) {
           throw new Error(
             "Event deletion conflict: The event has been modified by another client. Please refresh and try again."
@@ -846,13 +856,19 @@ export class DAVClient implements IDAVClient {
       const response = await this.delete(contactUrl, headers);
 
       // Check if deletion was successful (200 OK, 204 No Content, or 404 Not Found)
-      if (response.status !== 200 && response.status !== 204 && response.status !== 404) {
+      if (
+        response.status !== 200 &&
+        response.status !== 204 &&
+        response.status !== 404
+      ) {
         if (response.status === 412) {
           throw new Error(
             "Contact deletion conflict: The contact has been modified by another client. Please refresh and try again."
           );
         }
-        throw new Error(`Contact deletion failed with status ${response.status}`);
+        throw new Error(
+          `Contact deletion failed with status ${response.status}`
+        );
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -1141,18 +1157,52 @@ export class DAVClient implements IDAVClient {
           const vcard = vcardParser.parse(vcardData);
 
           // Extract contact properties
+          const nProperty = this.getVCardProperty(vcard, "n");
+          const fnProperty =
+            this.getVCardProperty(vcard, "fn") || "Unnamed Contact";
+          let firstName = "";
+          let lastName = "";
+
+          console.log(`Parsing contact: FN="${fnProperty}", N="${nProperty}"`);
+
+          // Parse N property (structured name: LastName;FirstName;MiddleName;Prefix;Suffix)
+          if (nProperty && typeof nProperty === "string") {
+            const nameParts = nProperty.split(";");
+            lastName = nameParts[0] || "";
+            firstName = nameParts[1] || "";
+            console.log(
+              `From N property: firstName="${firstName}", lastName="${lastName}"`
+            );
+          } else {
+            // Fallback: try to parse FN field for backward compatibility
+            const nameParts = fnProperty.trim().split(" ");
+            if (nameParts.length === 1) {
+              firstName = nameParts[0];
+            } else if (nameParts.length >= 2) {
+              firstName = nameParts[0];
+              lastName = nameParts.slice(1).join(" ");
+            }
+            console.log(
+              `From FN fallback: firstName="${firstName}", lastName="${lastName}"`
+            );
+          }
+
           const contact: Contact = {
             uid: this.getVCardProperty(vcard, "uid") || "",
-            fn: this.getVCardProperty(vcard, "fn") || "Unnamed Contact",
+            fn: fnProperty,
+            firstName: firstName || undefined,
+            lastName: lastName || undefined,
             email: this.getVCardPropertyArray(vcard, "email"),
             tel: this.getVCardPropertyArray(vcard, "tel"),
             org: this.getVCardProperty(vcard, "org"),
             etag,
           };
 
+          console.log(`Successfully parsed contact:`, contact);
           contacts.push(contact);
         } catch (vcardError) {
           console.warn("Failed to parse vCard data:", vcardError);
+          console.warn("vCard data was:", vcardData);
           // Continue processing other contacts
         }
       }
@@ -1320,6 +1370,13 @@ export class DAVClient implements IDAVClient {
       vcardData += "VERSION:3.0\r\n";
       vcardData += `UID:${contact.uid}\r\n`;
       vcardData += `FN:${this.escapeVCardValue(contact.fn)}\r\n`;
+
+      // Add structured name (N property: LastName;FirstName;MiddleName;Prefix;Suffix)
+      const lastName = contact.lastName || "";
+      const firstName = contact.firstName || "";
+      vcardData += `N:${this.escapeVCardValue(
+        lastName
+      )};${this.escapeVCardValue(firstName)};;;\r\n`;
 
       // Add email addresses
       if (contact.email && contact.email.length > 0) {

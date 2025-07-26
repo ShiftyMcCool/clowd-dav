@@ -3,9 +3,19 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ContactForm from '../ContactForm';
 import { Contact, AddressBook } from '../../../types/dav';
 import { DAVClient } from '../../../services/DAVClient';
+import { LoadingProvider } from '../../../contexts/LoadingContext';
 
 // Mock the DAVClient
 jest.mock('../../../services/DAVClient');
+
+// Helper function to render with providers
+const renderWithProviders = (component: React.ReactElement) => {
+  return render(
+    <LoadingProvider>
+      {component}
+    </LoadingProvider>
+  );
+};
 
 describe('ContactForm Component', () => {
   const mockAddressBook: AddressBook = {
@@ -16,6 +26,8 @@ describe('ContactForm Component', () => {
   const mockContact: Contact = {
     uid: 'test-contact-123',
     fn: 'John Doe',
+    firstName: 'John',
+    lastName: 'Doe',
     org: 'Test Company',
     email: ['john@example.com'],
     tel: ['123-456-7890'],
@@ -35,7 +47,7 @@ describe('ContactForm Component', () => {
   });
   
   test('renders form for creating a new contact', () => {
-    render(
+    renderWithProviders(
       <ContactForm
         addressBook={mockAddressBook}
         davClient={mockDavClient}
@@ -45,14 +57,15 @@ describe('ContactForm Component', () => {
     );
     
     expect(screen.getByText('Add New Contact')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Full Name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/First Name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Last Name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Organization/i)).toBeInTheDocument();
     expect(screen.getByText('+ Add Email')).toBeInTheDocument();
     expect(screen.getByText('+ Add Phone')).toBeInTheDocument();
   });
   
   test('renders form for editing an existing contact', () => {
-    render(
+    renderWithProviders(
       <ContactForm
         contact={mockContact}
         addressBook={mockAddressBook}
@@ -63,14 +76,15 @@ describe('ContactForm Component', () => {
     );
     
     expect(screen.getByText('Edit Contact')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Full Name/i)).toHaveValue('John Doe');
+    expect(screen.getByLabelText(/First Name/i)).toHaveValue('John');
+    expect(screen.getByLabelText(/Last Name/i)).toHaveValue('Doe');
     expect(screen.getByLabelText(/Organization/i)).toHaveValue('Test Company');
     expect(screen.getByDisplayValue('john@example.com')).toBeInTheDocument();
     expect(screen.getByDisplayValue('123-456-7890')).toBeInTheDocument();
   });
   
   test('validates required fields', async () => {
-    render(
+    renderWithProviders(
       <ContactForm
         addressBook={mockAddressBook}
         davClient={mockDavClient}
@@ -79,22 +93,24 @@ describe('ContactForm Component', () => {
       />
     );
     
-    // Clear the name field and submit
-    const nameInput = screen.getByLabelText(/Full Name/i);
-    fireEvent.change(nameInput, { target: { value: '' } });
+    // Clear both name fields and submit
+    const firstNameInput = screen.getByLabelText(/First Name/i);
+    const lastNameInput = screen.getByLabelText(/Last Name/i);
+    fireEvent.change(firstNameInput, { target: { value: '' } });
+    fireEvent.change(lastNameInput, { target: { value: '' } });
     
     const submitButton = screen.getByText('Save Contact');
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(screen.getByText('Full name is required')).toBeInTheDocument();
+      expect(screen.getAllByText('First name or last name is required')).toHaveLength(2);
     });
     
     expect(mockDavClient.createContact).not.toHaveBeenCalled();
   });
   
   test('validates email format', async () => {
-    render(
+    renderWithProviders(
       <ContactForm
         addressBook={mockAddressBook}
         davClient={mockDavClient}
@@ -104,8 +120,8 @@ describe('ContactForm Component', () => {
     );
     
     // Enter name and invalid email
-    const nameInput = screen.getByLabelText(/Full Name/i);
-    fireEvent.change(nameInput, { target: { value: 'Test User' } });
+    const firstNameInput = screen.getByLabelText(/First Name/i);
+    fireEvent.change(firstNameInput, { target: { value: 'Test' } });
     
     const emailInput = screen.getByPlaceholderText('Email address');
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
@@ -121,7 +137,7 @@ describe('ContactForm Component', () => {
   });
   
   test('creates a new contact successfully', async () => {
-    render(
+    renderWithProviders(
       <ContactForm
         addressBook={mockAddressBook}
         davClient={mockDavClient}
@@ -131,8 +147,10 @@ describe('ContactForm Component', () => {
     );
     
     // Fill out the form
-    const nameInput = screen.getByLabelText(/Full Name/i);
-    fireEvent.change(nameInput, { target: { value: 'Jane Smith' } });
+    const firstNameInput = screen.getByLabelText(/First Name/i);
+    const lastNameInput = screen.getByLabelText(/Last Name/i);
+    fireEvent.change(firstNameInput, { target: { value: 'Jane' } });
+    fireEvent.change(lastNameInput, { target: { value: 'Smith' } });
     
     const orgInput = screen.getByLabelText(/Organization/i);
     fireEvent.change(orgInput, { target: { value: 'New Company' } });
@@ -154,13 +172,15 @@ describe('ContactForm Component', () => {
     const createContactCall = mockDavClient.createContact.mock.calls[0];
     expect(createContactCall[0]).toBe(mockAddressBook);
     expect(createContactCall[1].fn).toBe('Jane Smith');
+    expect(createContactCall[1].firstName).toBe('Jane');
+    expect(createContactCall[1].lastName).toBe('Smith');
     expect(createContactCall[1].org).toBe('New Company');
     expect(createContactCall[1].email).toEqual(['jane@example.com']);
     expect(createContactCall[1].tel).toEqual(['987-654-3210']);
   });
   
   test('updates an existing contact successfully', async () => {
-    render(
+    renderWithProviders(
       <ContactForm
         contact={mockContact}
         addressBook={mockAddressBook}
@@ -171,8 +191,8 @@ describe('ContactForm Component', () => {
     );
     
     // Modify the form
-    const nameInput = screen.getByLabelText(/Full Name/i);
-    fireEvent.change(nameInput, { target: { value: 'John Doe Updated' } });
+    const firstNameInput = screen.getByLabelText(/First Name/i);
+    fireEvent.change(firstNameInput, { target: { value: 'Johnny' } });
     
     const submitButton = screen.getByText('Save Contact');
     fireEvent.click(submitButton);
@@ -184,13 +204,15 @@ describe('ContactForm Component', () => {
     
     const updateContactCall = mockDavClient.updateContact.mock.calls[0];
     expect(updateContactCall[0]).toBe(mockAddressBook);
-    expect(updateContactCall[1].fn).toBe('John Doe Updated');
+    expect(updateContactCall[1].fn).toBe('Johnny Doe');
+    expect(updateContactCall[1].firstName).toBe('Johnny');
+    expect(updateContactCall[1].lastName).toBe('Doe');
     expect(updateContactCall[1].uid).toBe('test-contact-123');
     expect(updateContactCall[1].etag).toBe('test-etag');
   });
   
   test('calls onCancel when cancel button is clicked', () => {
-    render(
+    renderWithProviders(
       <ContactForm
         addressBook={mockAddressBook}
         davClient={mockDavClient}
@@ -206,7 +228,7 @@ describe('ContactForm Component', () => {
   });
   
   test('adds and removes email fields', () => {
-    render(
+    renderWithProviders(
       <ContactForm
         addressBook={mockAddressBook}
         davClient={mockDavClient}

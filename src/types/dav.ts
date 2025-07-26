@@ -11,7 +11,9 @@ export interface CalendarEvent {
 
 export interface Contact {
   uid: string;
-  fn: string; // Full name
+  fn: string; // Full name (computed from firstName + lastName)
+  firstName?: string; // Given name
+  lastName?: string; // Family name
   email?: string[];
   tel?: string[];
   org?: string;
