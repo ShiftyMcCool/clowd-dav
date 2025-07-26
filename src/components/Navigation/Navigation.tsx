@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { ThemeToggle } from "../common/ThemeToggle";
+import { SyncStatusButton } from "../common/SyncStatusButton";
+import { SyncService } from "../../services/SyncService";
 import "./Navigation.css";
 
 interface NavigationProps {
@@ -7,6 +9,8 @@ interface NavigationProps {
   onViewChange: (view: "calendar" | "contacts") => void;
   username?: string;
   onLogout: () => void;
+  syncService?: SyncService;
+  onManualSync?: () => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -14,6 +18,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   onViewChange,
   username,
   onLogout,
+  syncService,
+  onManualSync,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -70,6 +76,12 @@ export const Navigation: React.FC<NavigationProps> = ({
           <h1>Clowd-DAV</h1>
 
           <div className="nav-controls">
+            {syncService && (
+              <SyncStatusButton 
+                syncService={syncService}
+                onManualSync={onManualSync}
+              />
+            )}
             <ThemeToggle />
             {username && (
               <div className="user-controls">

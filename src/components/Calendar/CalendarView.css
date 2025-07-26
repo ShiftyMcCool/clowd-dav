@@ -8,7 +8,6 @@
 .calendar-content {
   flex: 1;
   overflow: hidden;
-  padding: 0 1rem;
 }
 
 .calendar-loading {

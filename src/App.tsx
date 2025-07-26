@@ -20,7 +20,6 @@ import {
   LoadingOverlay,
   ErrorMessage,
   OfflineIndicator,
-  SyncStatusIndicator,
 } from "./components/common";
 import { LoadingProvider, useLoading } from "./contexts/LoadingContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -72,7 +71,9 @@ const NavigationWrapper: React.FC<{
   currentView: "calendar" | "contacts";
   username?: string;
   onLogout: () => void;
-}> = ({ currentView, username, onLogout }) => {
+  syncService?: SyncService;
+  onManualSync?: () => void;
+}> = ({ currentView, username, onLogout, syncService, onManualSync }) => {
   const navigate = useNavigate();
 
   const handleViewChange = (view: "calendar" | "contacts") => {
@@ -85,6 +86,8 @@ const NavigationWrapper: React.FC<{
       onViewChange={handleViewChange}
       username={username}
       onLogout={onLogout}
+      syncService={syncService}
+      onManualSync={onManualSync}
     />
   );
 };
@@ -831,6 +834,8 @@ const AppContent: React.FC = () => {
           currentView={currentView}
           username={currentConfig?.username}
           onLogout={handleLogout}
+          syncService={syncService}
+          onManualSync={handleManualSync}
         />
       )}
 
@@ -899,14 +904,6 @@ const AppContent: React.FC = () => {
 
       {/* Offline indicator */}
       <OfflineIndicator />
-
-      {/* Sync status indicator */}
-      {isAuthenticated && (
-        <SyncStatusIndicator
-          syncService={syncService}
-          onManualSync={handleManualSync}
-        />
-      )}
     </div>
   );
 };

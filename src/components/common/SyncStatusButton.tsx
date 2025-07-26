@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { SyncService, SyncStatus } from '../../services/SyncService';
-import './SyncStatusIndicator.css';
+import { Modal } from './Modal';
+import './SyncStatusButton.css';
 
-interface SyncStatusIndicatorProps {
+interface SyncStatusButtonProps {
   syncService: SyncService;
   onManualSync?: () => void;
 }
 
-export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
+export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({
   syncService,
   onManualSync
 }) => {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(syncService.getSyncStatus());
-  const [showDetails, setShowDetails] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const handleSyncStatusChange = (status: SyncStatus) => {
@@ -44,11 +45,29 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
     }
   };
 
-  const formatLastSync = (lastSync: Date | null): string => {
+  // Debug function to clear corrupted cache data
+  const handleClearCache = () => {
+    if (window.confirm('Clear all cached data? This will remove pending operations and force a fresh sync.')) {
+      // Import CacheService dynamically to clear cache
+      import('../../services/CacheService').then(({ CacheService }) => {
+        CacheService.clearCache();
+        // Force a refresh of the sync status
+        setSyncStatus(syncService.getSyncStatus());
+      });
+    }
+  };
+
+  const formatLastSync = (lastSync: Date | null | string): string => {
     if (!lastSync) return 'Never';
     
+    // Ensure we have a proper Date object
+    const date = lastSync instanceof Date ? lastSync : new Date(lastSync);
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) return 'Invalid date';
+    
     const now = new Date();
-    const diffMs = now.getTime() - lastSync.getTime();
+    const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     
     if (diffMinutes < 1) return 'Just now';
@@ -85,18 +104,23 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
   };
 
   return (
-    <div className="sync-status-indicator">
-      <div 
-        className={`sync-status-main ${getStatusClass()}`}
-        onClick={() => setShowDetails(!showDetails)}
+    <>
+      <button 
+        className={`sync-status-button ${getStatusClass()}`}
+        onClick={() => setShowModal(true)}
         title="Click for sync details"
       >
         <span className="sync-status-icon">{getStatusIcon()}</span>
         <span className="sync-status-text">{getStatusText()}</span>
-      </div>
+      </button>
 
-      {showDetails && (
-        <div className="sync-status-details">
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Sync Status"
+        size="small"
+      >
+        <div className="sync-modal-content">
           <div className="sync-status-info">
             <div className="sync-info-row">
               <span className="sync-info-label">Status:</span>
@@ -130,6 +154,14 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
             >
               {syncStatus.syncInProgress ? 'Syncing...' : 'Sync Now'}
             </button>
+            {syncStatus.pendingOperations.length > 0 && (
+              <button
+                className="sync-action-button sync-clear-button"
+                onClick={handleClearCache}
+              >
+                Clear Cache
+              </button>
+            )}
           </div>
 
           {syncStatus.pendingOperations.length > 0 && (
@@ -156,7 +188,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
             </div>
           )}
         </div>
-      )}
-    </div>
+      </Modal>
+    </>
   );
 };

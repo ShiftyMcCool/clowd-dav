@@ -1,9 +1,4 @@
-.sync-status-indicator {
-  position: relative;
-  display: inline-block;
-}
-
-.sync-status-main {
+.sync-status-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -14,10 +9,13 @@
   font-size: 0.875rem;
   font-weight: 500;
   border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-nav-text-muted);
 }
 
-.sync-status-main:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+.sync-status-button:hover {
+  background-color: var(--color-nav-hover);
+  color: var(--color-nav-text);
 }
 
 .sync-status-icon {
@@ -29,59 +27,41 @@
   white-space: nowrap;
 }
 
-/* Status-specific styles */
-.sync-status-synced {
-  color: #059669;
-  background-color: #ecfdf5;
-  border-color: #d1fae5;
+/* Status-specific styles for navbar */
+.sync-status-button.sync-status-synced {
+  color: #10b981;
 }
 
-.sync-status-syncing {
-  color: #0284c7;
-  background-color: #f0f9ff;
-  border-color: #bae6fd;
+.sync-status-button.sync-status-syncing {
+  color: #3b82f6;
 }
 
-.sync-status-syncing .sync-status-icon {
+.sync-status-button.sync-status-syncing .sync-status-icon {
   animation: loading-spin 1s linear infinite;
 }
 
-.sync-status-offline {
-  color: #dc2626;
-  background-color: #fef2f2;
-  border-color: #fecaca;
+.sync-status-button.sync-status-offline {
+  color: #ef4444;
 }
 
-.sync-status-pending {
-  color: #d97706;
-  background-color: #fffbeb;
-  border-color: #fed7aa;
+.sync-status-button.sync-status-pending {
+  color: #f59e0b;
 }
 
-/* Details panel */
-.sync-status-details {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 1000;
+/* Modal content styles */
+.sync-modal-content {
   min-width: 280px;
-  margin-top: 0.5rem;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  padding: 1rem;
 }
 
 .sync-status-info {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .sync-info-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .sync-info-row:last-child {
@@ -90,40 +70,41 @@
 
 .sync-info-label {
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-primary);
   font-size: 0.875rem;
 }
 
 .sync-info-value {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
 .sync-info-value.sync-status-synced {
-  color: #059669;
+  color: #10b981;
 }
 
 .sync-info-value.sync-status-offline {
-  color: #dc2626;
+  color: #ef4444;
 }
 
 .sync-info-value.sync-pending {
-  color: #d97706;
+  color: #f59e0b;
   font-weight: 500;
 }
 
 /* Actions */
 .sync-status-actions {
-  margin-bottom: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .sync-action-button {
   width: 100%;
-  padding: 0.5rem 1rem;
-  background-color: #3b82f6;
-  color: white;
+  padding: 0.75rem 1rem;
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
   border: none;
   border-radius: 0.375rem;
   font-size: 0.875rem;
@@ -133,25 +114,33 @@
 }
 
 .sync-action-button:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: var(--color-primary-hover);
 }
 
 .sync-action-button:disabled {
-  background-color: #9ca3af;
+  background-color: var(--color-text-muted);
   cursor: not-allowed;
+}
+
+.sync-clear-button {
+  background-color: var(--color-danger);
+}
+
+.sync-clear-button:hover:not(:disabled) {
+  background-color: var(--color-danger-hover);
 }
 
 /* Pending operations */
 .sync-pending-operations {
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border-secondary);
 }
 
 .sync-pending-operations h4 {
   margin: 0 0 0.75rem 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-primary);
 }
 
 .pending-operations-list {
@@ -165,7 +154,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-border-secondary);
   font-size: 0.75rem;
 }
 
@@ -175,40 +164,41 @@
 
 .operation-type {
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-primary);
   text-transform: capitalize;
   min-width: 50px;
 }
 
 .operation-resource {
-  color: #6b7280;
+  color: var(--color-text-secondary);
   flex: 1;
   text-align: center;
 }
 
 .operation-time {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   min-width: 60px;
   text-align: right;
 }
 
 .operation-more {
-  color: #6b7280;
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
 /* Animations */
-/* Removed duplicate spin animation - using loading-spin from LoadingOverlay instead */
+@keyframes loading-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
 
 /* Responsive design */
-@media (max-width: 640px) {
-  .sync-status-details {
-    right: auto;
-    left: 0;
-    min-width: 260px;
-  }
-  
-  .sync-status-main {
+@media (max-width: 768px) {
+  .sync-status-button {
     padding: 0.375rem 0.5rem;
     font-size: 0.8125rem;
   }
