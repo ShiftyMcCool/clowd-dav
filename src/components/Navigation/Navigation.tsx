@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ThemeToggle } from "../common/ThemeToggle";
 import { SyncStatusButton } from "../common/SyncStatusButton";
 import { SyncService } from "../../services/SyncService";
+import { useTheme } from "../../contexts/ThemeContext";
 import "./Navigation.css";
 
 interface NavigationProps {
@@ -21,82 +22,135 @@ export const Navigation: React.FC<NavigationProps> = ({
   syncService,
   onManualSync,
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  // Initialize sidebar state based on screen size
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    return window.innerWidth > 768;
+  });
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
   const handleViewChange = (view: "calendar" | "contacts") => {
     onViewChange(view);
-    setMobileMenuOpen(false);
+    // Close sidebar on mobile after navigation
+    if (window.innerWidth <= 768) {
+      setSidebarOpen(false);
+    }
   };
 
+  // Update app-main class based on sidebar state
+  React.useEffect(() => {
+    const appMain = document.querySelector('.app-main');
+    if (appMain) {
+      if (sidebarOpen) {
+        appMain.classList.remove('sidebar-collapsed');
+      } else {
+        appMain.classList.add('sidebar-collapsed');
+      }
+    }
+  }, [sidebarOpen]);
+
+  // Handle window resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <header className="app-header">
-      <div className="header-content">
-        <div className="logo-container">
+    <>
+      <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
+        <div className="sidebar-header">
           <button
-            className="mobile-menu-toggle"
-            onClick={toggleMobileMenu}
-            aria-label="Toggle navigation menu"
+            className="sidebar-toggle"
+            onClick={toggleSidebar}
+            aria-label="Toggle sidebar"
           >
-            <span className="menu-icon"></span>
+            <span className="toggle-icon"></span>
           </button>
+          {sidebarOpen && <h1 className="sidebar-title">Clowd-DAV</h1>}
         </div>
 
-        <nav
-          className={`main-navigation ${mobileMenuOpen ? "mobile-open" : ""}`}
-        >
-          <ul className="nav-links">
+        <nav className="sidebar-navigation">
+          <ul className="sidebar-nav-links">
             <li>
               <button
-                className={`nav-link ${
+                className={`sidebar-nav-link ${
                   currentView === "calendar" ? "active" : ""
                 }`}
                 onClick={() => handleViewChange("calendar")}
+                title="Calendar"
               >
                 <span className="nav-icon calendar-icon"></span>
-                Calendar
+                {sidebarOpen && <span className="nav-text">Calendar</span>}
               </button>
             </li>
             <li>
               <button
-                className={`nav-link ${
+                className={`sidebar-nav-link ${
                   currentView === "contacts" ? "active" : ""
                 }`}
                 onClick={() => handleViewChange("contacts")}
+                title="Contacts"
               >
                 <span className="nav-icon contacts-icon"></span>
-                Contacts
+                {sidebarOpen && <span className="nav-text">Contacts</span>}
               </button>
             </li>
           </ul>
+        </nav>
 
-          <h1>Clowd-DAV</h1>
-
-          <div className="nav-controls">
+        <div className="sidebar-footer">
+          <div className="sidebar-bottom-row">
+            <button
+              className="sidebar-icon-button theme-button"
+              onClick={toggleTheme}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              <span className="button-icon theme-icon"></span>
+            </button>
+            
+            {username && (
+              <button
+                className="sidebar-icon-button user-button"
+                title={`Logged in as ${username}`}
+              >
+                <span className="button-icon user-icon"></span>
+              </button>
+            )}
+            
             {syncService && (
               <SyncStatusButton 
                 syncService={syncService}
                 onManualSync={onManualSync}
+                iconOnly={true}
               />
             )}
-            <ThemeToggle />
-            {username && (
-              <div className="user-controls">
-                <div className="username">
-                  <span className="user-icon"></span>
-                  {username}
-                </div>
-                <button onClick={onLogout} className="logout-button">
-                  Logout
-                </button>
-              </div>
-            )}
+            
+            <button
+              className="sidebar-icon-button logout-button"
+              onClick={onLogout}
+              title="Logout"
+            >
+              <span className="button-icon logout-icon"></span>
+            </button>
           </div>
-        </nav>
-      </div>
-    </header>
+          
+          {/* Hidden theme toggle for functionality */}
+          <div style={{ display: 'none' }}>
+            <ThemeToggle />
+          </div>
+        </div>
+      </aside>
+      
+      <div className={`sidebar-overlay ${sidebarOpen ? "overlay-visible" : ""}`} onClick={toggleSidebar}></div>
+    </>
   );
 };

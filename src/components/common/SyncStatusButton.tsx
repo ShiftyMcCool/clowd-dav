@@ -6,11 +6,13 @@ import './SyncStatusButton.css';
 interface SyncStatusButtonProps {
   syncService: SyncService;
   onManualSync?: () => void;
+  iconOnly?: boolean;
 }
 
 export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({
   syncService,
-  onManualSync
+  onManualSync,
+  iconOnly = false
 }) => {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(syncService.getSyncStatus());
   const [showModal, setShowModal] = useState(false);
@@ -102,6 +104,96 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({
     if (syncStatus.pendingOperations.length > 0) return 'sync-status-pending';
     return 'sync-status-synced';
   };
+
+  if (iconOnly) {
+    return (
+      <>
+        <button 
+          className={`sidebar-icon-button sync-button ${getStatusClass()}`}
+          onClick={() => setShowModal(true)}
+          title={`Sync status: ${getStatusText()}`}
+        >
+          <span className={`button-icon sync-icon ${getStatusClass()}`}></span>
+        </button>
+
+        <Modal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          title="Sync Status"
+          size="small"
+        >
+          <div className="sync-modal-content">
+            <div className="sync-status-info">
+              <div className="sync-info-row">
+                <span className="sync-info-label">Status:</span>
+                <span className={`sync-info-value ${getStatusClass()}`}>
+                  {syncStatus.isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              
+              <div className="sync-info-row">
+                <span className="sync-info-label">Last sync:</span>
+                <span className="sync-info-value">
+                  {formatLastSync(syncStatus.lastSync)}
+                </span>
+              </div>
+              
+              {syncStatus.pendingOperations.length > 0 && (
+                <div className="sync-info-row">
+                  <span className="sync-info-label">Pending:</span>
+                  <span className="sync-info-value sync-pending">
+                    {syncStatus.pendingOperations.length} operations
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="sync-status-actions">
+              <button
+                className="sync-action-button"
+                onClick={handleManualSync}
+                disabled={syncStatus.syncInProgress || !syncStatus.isOnline}
+              >
+                {syncStatus.syncInProgress ? 'Syncing...' : 'Sync Now'}
+              </button>
+              {syncStatus.pendingOperations.length > 0 && (
+                <button
+                  className="sync-action-button sync-clear-button"
+                  onClick={handleClearCache}
+                >
+                  Clear Cache
+                </button>
+              )}
+            </div>
+
+            {syncStatus.pendingOperations.length > 0 && (
+              <div className="sync-pending-operations">
+                <h4>Pending Operations:</h4>
+                <ul className="pending-operations-list">
+                  {syncStatus.pendingOperations.slice(0, 5).map(operation => (
+                    <li key={operation.id} className="pending-operation-item">
+                      <span className="operation-type">{operation.type}</span>
+                      <span className="operation-resource">{operation.resourceType}</span>
+                      <span className="operation-time">
+                        {formatLastSync(operation.timestamp)}
+                      </span>
+                    </li>
+                  ))}
+                  {syncStatus.pendingOperations.length > 5 && (
+                    <li className="pending-operation-item">
+                      <span className="operation-more">
+                        +{syncStatus.pendingOperations.length - 5} more...
+                      </span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Modal>
+      </>
+    );
+  }
 
   return (
     <>
