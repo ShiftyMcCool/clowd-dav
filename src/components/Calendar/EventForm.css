@@ -184,15 +184,25 @@
 
 .form-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 32px;
   padding-top: 20px;
   border-top: 1px solid var(--color-border-primary);
 }
 
+.form-actions-left {
+  display: flex;
+}
+
+.form-actions-right {
+  display: flex;
+  gap: 12px;
+}
+
 .cancel-button,
-.save-button {
+.save-button,
+.delete-button {
   padding: 10px 20px;
   border: none;
   border-radius: 4px;
@@ -221,8 +231,18 @@
   background-color: var(--color-primary-hover);
 }
 
+.delete-button {
+  background-color: var(--color-danger);
+  color: var(--color-text-inverse);
+}
+
+.delete-button:hover:not(:disabled) {
+  background-color: var(--color-danger-hover, #c82333);
+}
+
 .cancel-button:disabled,
-.save-button:disabled {
+.save-button:disabled,
+.delete-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -248,12 +268,23 @@
   }
   
   .form-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .form-actions-left,
+  .form-actions-right {
+    width: 100%;
+  }
+  
+  .form-actions-right {
     flex-direction: column-reverse;
     gap: 8px;
   }
   
   .cancel-button,
-  .save-button {
+  .save-button,
+  .delete-button {
     width: 100%;
   }
 }

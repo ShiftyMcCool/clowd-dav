@@ -8,6 +8,7 @@ interface EventFormProps {
   selectedCalendar?: Calendar;
   onSave: (event: CalendarEvent, calendar: Calendar) => Promise<void>;
   onCancel: () => void;
+  onDelete?: (event: CalendarEvent, calendar: Calendar) => Promise<void>;
   isEditing?: boolean;
   initialDate?: Date;
 }
@@ -18,6 +19,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   selectedCalendar,
   onSave,
   onCancel,
+  onDelete,
   isEditing = false,
   initialDate
 }) => {
@@ -32,6 +34,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   });
   const [selectedCalendarUrl, setSelectedCalendarUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Initialize form data when event, selectedCalendar, or initialDate changes
@@ -274,25 +277,81 @@ export const EventForm: React.FC<EventFormProps> = ({
     }
   }, [validateForm, formData, event, calendars, selectedCalendarUrl, onSave]);
 
+  const handleDelete = useCallback(async () => {
+    if (!event || !onDelete || !isEditing) {
+      return;
+    }
 
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${event.summary}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setErrors(prev => ({ ...prev, submit: '' })); // Clear previous submit errors
+
+    try {
+      // Find the calendar this event belongs to
+      const calendar = calendars.find(cal => cal.url === event.calendarUrl) || 
+                      calendars.find(cal => cal.url === selectedCalendarUrl);
+      
+      if (!calendar) {
+        throw new Error('Calendar not found for this event');
+      }
+
+      await onDelete(event, calendar);
+      
+      // If we get here, the delete was successful and the parent component
+      // should handle closing the form and refreshing the calendar
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      
+      // Provide user-friendly error messages
+      let errorMessage = 'Failed to delete event';
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication failed')) {
+          errorMessage = 'Authentication failed. Please check your credentials and try again.';
+        } else if (error.message.includes('Network error')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (error.message.includes('Access forbidden')) {
+          errorMessage = 'You do not have permission to delete this event.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setErrors({ submit: errorMessage });
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [event, onDelete, isEditing, calendars, selectedCalendarUrl]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Escape key to cancel
-      if (e.key === 'Escape' && !isSubmitting) {
+      if (e.key === 'Escape' && !isSubmitting && !isDeleting) {
         onCancel();
       }
       // Ctrl/Cmd + Enter to save
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isSubmitting) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isSubmitting && !isDeleting) {
         e.preventDefault();
         handleSubmit(e as any);
+      }
+      // Delete key to delete (only when editing)
+      if (e.key === 'Delete' && (e.ctrlKey || e.metaKey) && isEditing && onDelete && !isSubmitting && !isDeleting) {
+        e.preventDefault();
+        handleDelete();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isSubmitting, onCancel, handleSubmit]);
+  }, [isSubmitting, isDeleting, onCancel, handleSubmit, handleDelete, isEditing, onDelete]);
 
   // Focus management
   useEffect(() => {
@@ -508,36 +567,61 @@ export const EventForm: React.FC<EventFormProps> = ({
 
           {/* Form Actions */}
           <div className="form-actions">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={isSubmitting}
-              className="cancel-button"
-              aria-label="Cancel event editing"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || Object.keys(errors).some(key => key !== 'submit' && errors[key])}
-              className="save-button"
-              aria-label={isEditing ? 'Update event' : 'Create new event'}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="loading-spinner" aria-hidden="true"></span>
-                  {isEditing ? 'Updating...' : 'Creating...'}
-                </>
-              ) : (
-                isEditing ? 'Update Event' : 'Create Event'
+            <div className="form-actions-left">
+              {isEditing && onDelete && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isSubmitting || isDeleting}
+                  className="delete-button"
+                  aria-label="Delete event"
+                >
+                  {isDeleting ? (
+                    <>
+                      <span className="loading-spinner" aria-hidden="true"></span>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Event'
+                  )}
+                </button>
               )}
-            </button>
+            </div>
+            <div className="form-actions-right">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSubmitting || isDeleting}
+                className="cancel-button"
+                aria-label="Cancel event editing"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || isDeleting || Object.keys(errors).some(key => key !== 'submit' && errors[key])}
+                className="save-button"
+                aria-label={isEditing ? 'Update event' : 'Create new event'}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="loading-spinner" aria-hidden="true"></span>
+                    {isEditing ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  isEditing ? 'Update Event' : 'Create Event'
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Keyboard shortcuts hint */}
           <div className="keyboard-shortcuts">
             <small>
-              Press <kbd>Esc</kbd> to cancel or <kbd>Ctrl+Enter</kbd> to save
+              Press <kbd>Esc</kbd> to cancel, <kbd>Ctrl+Enter</kbd> to save
+              {isEditing && onDelete && (
+                <>, or <kbd>Ctrl+Delete</kbd> to delete</>
+              )}
             </small>
           </div>
         </form>

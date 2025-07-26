@@ -491,6 +491,42 @@ const AppContent: React.FC = () => {
     [editingEvent, sync, currentDateRange, loadEvents, errorService]
   );
 
+  const handleEventDelete = useCallback(
+    async (event: CalendarEvent, calendar: Calendar) => {
+      try {
+        showLoading("Deleting event...");
+
+        await sync.deleteEvent(calendar, event);
+
+        // Refresh events after successful delete
+        if (currentDateRange) {
+          await loadEvents(currentDateRange);
+        }
+
+        // Close form
+        setShowEventForm(false);
+        setEditingEvent(null);
+        setSelectedCalendar(null);
+        setInitialDate(undefined);
+      } catch (error) {
+        console.error("Error deleting event:", error);
+
+        // Report error but don't throw it
+        errorService.reportError(
+          `Failed to delete event: ${errorService.formatErrorMessage(error)}`,
+          "error"
+        );
+
+        // Don't close the form so the user can try again
+        throw error; // Re-throw to let the form handle the error display
+      } finally {
+        hideLoading();
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sync, currentDateRange, loadEvents, errorService]
+  );
+
   const handleEventFormCancel = () => {
     setShowEventForm(false);
     setEditingEvent(null);
@@ -686,6 +722,7 @@ const AppContent: React.FC = () => {
                   selectedCalendar={selectedCalendar || undefined}
                   onSave={handleEventSave}
                   onCancel={handleEventFormCancel}
+                  onDelete={handleEventDelete}
                   isEditing={!!editingEvent}
                   initialDate={initialDate}
                 />
@@ -706,6 +743,7 @@ const AppContent: React.FC = () => {
     handleDateRangeChange,
     handleEventClick,
     handleEventSave,
+    handleEventDelete,
     initialDate,
     selectedCalendar,
     showEventForm,
