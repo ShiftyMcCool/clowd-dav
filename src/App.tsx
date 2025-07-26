@@ -644,6 +644,39 @@ const AppContent: React.FC = () => {
     setEditingContact(null);
   };
 
+  // Handle deleting a contact
+  const handleContactDelete = async (contact: Contact) => {
+    if (!selectedAddressBook) return;
+
+    try {
+      showLoading("Deleting contact...", "medium");
+
+      // Delete contact using sync service
+      await sync.deleteContact(selectedAddressBook, contact);
+
+      // Close form and reset state
+      setShowContactForm(false);
+      setEditingContact(null);
+      setSelectedContact(null);
+      
+      // Trigger contact list refresh
+      setContactRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error("Error deleting contact:", error);
+
+      // Report error
+      errorService.reportError(
+        `Failed to delete contact: ${errorService.formatErrorMessage(error)}`,
+        "error"
+      );
+
+      // Re-throw to let the form handle the error display
+      throw error;
+    } finally {
+      hideLoading();
+    }
+  };
+
   // Handle address book change
   const handleAddressBookChange = (addressBook: AddressBook) => {
     setSelectedAddressBook(addressBook);
@@ -809,6 +842,7 @@ const AppContent: React.FC = () => {
                       davClient={davClient}
                       onSave={handleContactSave}
                       onCancel={handleContactFormCancel}
+                      onDelete={editingContact ? handleContactDelete : undefined}
                     />
                   </Suspense>
                 )}

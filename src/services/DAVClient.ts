@@ -820,6 +820,69 @@ export class DAVClient implements IDAVClient {
   }
 
   /**
+   * Delete an existing contact using DELETE request with ETag handling
+   * Implements CardDAV contact deletion protocol with conflict detection
+   */
+  public async deleteContact(
+    addressBook: AddressBook,
+    contact: Contact
+  ): Promise<void> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before deleting contacts."
+      );
+    }
+
+    // Generate contact URL
+    const contactUrl = this.generateContactUrl(addressBook, contact);
+
+    try {
+      // DELETE request with optional If-Match header for conflict detection
+      const headers: Record<string, string> = {};
+      if (contact.etag) {
+        headers["If-Match"] = `"${contact.etag}"`;
+      }
+
+      const response = await this.delete(contactUrl, headers);
+
+      // Check if deletion was successful (200 OK, 204 No Content, or 404 Not Found)
+      if (response.status !== 200 && response.status !== 204 && response.status !== 404) {
+        if (response.status === 412) {
+          throw new Error(
+            "Contact deletion conflict: The contact has been modified by another client. Please refresh and try again."
+          );
+        }
+        throw new Error(`Contact deletion failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's already a conflict error, re-throw as is
+        if (error.message.includes("Contact deletion conflict")) {
+          throw error;
+        }
+        // Handle 412 Precondition Failed specifically
+        if (error.message.includes("Server error (412)")) {
+          throw new Error(
+            "Contact deletion conflict: The contact has been modified by another client. Please refresh and try again."
+          );
+        }
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Contact deletion failed: ${error.message}`);
+        }
+        throw new Error(`Contact deletion failed: ${error.message}`);
+      }
+      throw new Error("Contact deletion failed: Unknown error");
+    }
+  }
+
+  /**
    * Parse PROPFIND response to extract calendar information
    */
   private parseCalendarDiscoveryResponse(

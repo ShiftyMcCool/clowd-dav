@@ -10,6 +10,7 @@ interface ContactFormProps {
   davClient: DAVClient;
   onSave: (savedContact: Contact) => void;
   onCancel: () => void;
+  onDelete?: (contact: Contact) => void;
 }
 
 const ContactForm: React.FC<ContactFormProps> = ({
@@ -17,7 +18,8 @@ const ContactForm: React.FC<ContactFormProps> = ({
   addressBook,
   davClient,
   onSave,
-  onCancel
+  onCancel,
+  onDelete
 }) => {
   const { showLoading, hideLoading } = useLoading();
   const isEditing = !!contact;
@@ -41,6 +43,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
   }>({});
   
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Validate form data
   const validateForm = (): boolean => {
@@ -68,6 +71,28 @@ const ContactForm: React.FC<ContactFormProps> = ({
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle contact deletion
+  const handleDelete = async () => {
+    if (!contact || !onDelete) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${contact.fn}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      showLoading('Deleting contact...', 'medium');
+      setDeleteError(null);
+      await onDelete(contact);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete contact');
+      console.error('Error deleting contact:', err);
+    } finally {
+      hideLoading();
+    }
   };
 
   // Handle form submission
@@ -263,21 +288,41 @@ const ContactForm: React.FC<ContactFormProps> = ({
             Error: {submitError}
           </div>
         )}
+
+        {deleteError && (
+          <div className="form-error-message">
+            Error: {deleteError}
+          </div>
+        )}
         
         <div className="form-actions">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="cancel-button"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="save-button"
-          >
-            Save Contact
-          </button>
+          <div className="form-actions-left">
+            {isEditing && onDelete && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="delete-button"
+                aria-label="Delete contact"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+          <div className="form-actions-right">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="cancel-button"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="save-button"
+            >
+              Save Contact
+            </button>
+          </div>
         </div>
       </form>
     </div>

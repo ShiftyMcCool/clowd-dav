@@ -16,6 +16,7 @@ export interface UseSyncReturn {
   deleteEvent: (calendar: Calendar, event: CalendarEvent) => Promise<void>;
   createContact: (addressBook: AddressBook, contact: Contact) => Promise<void>;
   updateContact: (addressBook: AddressBook, contact: Contact) => Promise<void>;
+  deleteContact: (addressBook: AddressBook, contact: Contact) => Promise<void>;
   getEvents: (calendar: Calendar, dateRange: DateRange) => Promise<CalendarEvent[]>;
   getContacts: (addressBook: AddressBook) => Promise<Contact[]>;
   clearError: () => void;
@@ -113,6 +114,10 @@ export const useSync = (syncService: SyncService): UseSyncReturn => {
     await handleAsyncOperation(() => syncService.updateContact(addressBook, contact));
   }, [syncService, handleAsyncOperation]);
 
+  const deleteContact = useCallback(async (addressBook: AddressBook, contact: Contact): Promise<void> => {
+    await handleAsyncOperation(() => syncService.deleteContact(addressBook, contact));
+  }, [syncService, handleAsyncOperation]);
+
   const getEvents = useCallback(async (calendar: Calendar, dateRange: DateRange): Promise<CalendarEvent[]> => {
     return handleAsyncOperation(() => syncService.getEvents(calendar, dateRange));
   }, [syncService, handleAsyncOperation]);
@@ -135,6 +140,7 @@ export const useSync = (syncService: SyncService): UseSyncReturn => {
     deleteEvent,
     createContact,
     updateContact,
+    deleteContact,
     getEvents,
     getContacts,
     clearError

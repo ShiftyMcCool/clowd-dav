@@ -424,6 +424,47 @@ export class SyncService {
   }
 
   /**
+   * Deletes a contact with offline support
+   */
+  async deleteContact(addressBook: AddressBook, contact: Contact): Promise<void> {
+    if (navigator.onLine) {
+      try {
+        await this.davClient.deleteContact(addressBook, contact);
+        
+        // Remove from cache immediately
+        const cachedContacts = CacheService.getCachedContacts(addressBook.url);
+        if (cachedContacts) {
+          const filteredContacts = cachedContacts.contacts.filter(c => c.uid !== contact.uid);
+          CacheService.storeCachedContacts(addressBook.url, filteredContacts, cachedContacts.etag);
+        }
+      } catch (error) {
+        // If online but failed, add to pending operations
+        CacheService.addPendingOperation({
+          type: 'delete',
+          resourceType: 'contact',
+          resourceUrl: addressBook.url,
+          data: contact
+        });
+        throw error;
+      }
+    } else {
+      // Offline: add to pending operations and remove from cache optimistically
+      CacheService.addPendingOperation({
+        type: 'delete',
+        resourceType: 'contact',
+        resourceUrl: addressBook.url,
+        data: contact
+      });
+
+      const cachedContacts = CacheService.getCachedContacts(addressBook.url);
+      if (cachedContacts) {
+        const filteredContacts = cachedContacts.contacts.filter(c => c.uid !== contact.uid);
+        CacheService.storeCachedContacts(addressBook.url, filteredContacts, cachedContacts.etag);
+      }
+    }
+  }
+
+  /**
    * Gets events with cache fallback
    */
   async getEvents(calendar: Calendar, dateRange: DateRange): Promise<CalendarEvent[]> {
@@ -543,7 +584,9 @@ export class SyncService {
         case 'update':
           await this.davClient.updateContact(addressBook, contact);
           break;
-        // Note: delete operations for contacts would be implemented here
+        case 'delete':
+          await this.davClient.deleteContact(addressBook, contact);
+          break;
       }
     }
   }

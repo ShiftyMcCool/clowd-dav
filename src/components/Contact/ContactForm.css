@@ -101,11 +101,21 @@
 
 .form-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 30px;
   border-top: 1px solid #f0f0f0;
   padding-top: 20px;
+}
+
+.form-actions-left {
+  display: flex;
+  gap: 10px;
+}
+
+.form-actions-right {
+  display: flex;
+  gap: 10px;
 }
 
 .cancel-button {
@@ -135,8 +145,23 @@
   background-color: #3367d6;
 }
 
+.delete-button {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.delete-button:hover {
+  background-color: #b71c1c;
+}
+
 .save-button:disabled,
-.cancel-button:disabled {
+.cancel-button:disabled,
+.delete-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
