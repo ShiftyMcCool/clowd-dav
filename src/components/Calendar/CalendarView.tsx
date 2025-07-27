@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CalendarEvent, Calendar, DateRange } from '../../types/dav';
 import { CalendarGrid } from './CalendarGrid';
 import { CalendarNavigation } from './CalendarNavigation';
-import { EventList } from './EventList';
+import { DayView } from './DayView';
 import './CalendarView.css';
 
 export type ViewType = 'month' | 'week' | 'day';
@@ -57,13 +57,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     switch (view) {
       case 'day':
+        // For day view, load the entire week's events so WeeklyAgenda can show them
+        const dayOfWeekForDay = start.getDay();
+        start.setDate(start.getDate() - dayOfWeekForDay);
         start.setHours(0, 0, 0, 0);
+        end.setDate(start.getDate() + 6);
         end.setHours(23, 59, 59, 999);
         break;
       case 'week':
         // Start of week (Sunday)
-        const dayOfWeek = start.getDay();
-        start.setDate(start.getDate() - dayOfWeek);
+        const dayOfWeekForWeek = start.getDay();
+        start.setDate(start.getDate() - dayOfWeekForWeek);
         start.setHours(0, 0, 0, 0);
         // End of week (Saturday)
         end.setDate(start.getDate() + 6);
@@ -191,15 +195,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             onDateClick={handleDateClick}
           />
         ) : (
-          <EventList
+          <DayView
             date={currentDate}
-            events={events.filter(event => {
-              const eventDate = new Date(event.dtstart);
-              return eventDate.toDateString() === currentDate.toDateString();
-            })}
+            events={events}
             calendars={calendars}
             onEventClick={onEventClick}
-            onCreateEvent={() => onCreateEvent?.(currentDate)}
+            onCreateEvent={onCreateEvent}
+            onDateChange={onDateChange}
           />
         )}
       </div>

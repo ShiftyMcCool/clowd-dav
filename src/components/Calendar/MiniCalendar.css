@@ -1,0 +1,175 @@
+.mini-calendar {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  margin: 1rem;
+  overflow: hidden;
+}
+
+.mini-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.mini-calendar-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.nav-button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-button:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.mini-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.mini-weekday {
+  padding: 0.5rem 0.25rem;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.mini-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.mini-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-right: 1px solid var(--color-border-secondary);
+  border-bottom: 1px solid var(--color-border-secondary);
+  position: relative;
+}
+
+.mini-day:hover {
+  background: var(--color-bg-hover);
+}
+
+.mini-day.today {
+  background: var(--color-primary-light);
+}
+
+.mini-day.selected {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.mini-day.other-month {
+  color: var(--color-text-disabled);
+}
+
+.mini-day.other-month:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.mini-day-number {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 0.125rem;
+}
+
+.mini-day-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  justify-content: center;
+  align-items: center;
+  min-height: 8px;
+}
+
+.mini-event-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mini-more-events {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-left: 1px;
+}
+
+/* Remove border from last column and row */
+.mini-day:nth-child(7n) {
+  border-right: none;
+}
+
+.mini-day:nth-last-child(-n+7) {
+  border-bottom: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .mini-calendar {
+    margin: 0.5rem;
+  }
+  
+  .mini-calendar-header {
+    padding: 0.5rem;
+  }
+  
+  .mini-calendar-title {
+    font-size: 13px;
+  }
+  
+  .mini-weekday {
+    padding: 0.375rem 0.125rem;
+    font-size: 10px;
+  }
+  
+  .mini-day {
+    padding: 0.125rem;
+  }
+  
+  .mini-day-number {
+    font-size: 11px;
+  }
+  
+  .mini-event-dot {
+    width: 3px;
+    height: 3px;
+  }
+  
+  .mini-more-events {
+    font-size: 7px;
+  }
+}
