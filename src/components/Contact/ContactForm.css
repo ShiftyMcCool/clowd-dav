@@ -2,18 +2,19 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #fff;
-  border-left: 1px solid #e0e0e0;
+  background-color: var(--color-bg-primary);
+  border-left: 1px solid var(--color-border-primary);
 }
 
 .contact-form-header {
   padding: 15px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border-primary);
 }
 
 .contact-form-header h2 {
   margin: 0;
   font-size: 1.2rem;
+  color: var(--color-text-primary);
 }
 
 .contact-form {
@@ -30,23 +31,33 @@
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
+  color: var(--color-text-primary);
 }
 
 .form-group input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-input-border);
   border-radius: 4px;
   font-size: 14px;
   box-sizing: border-box;
+  background-color: var(--color-input-bg);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-input-focus);
+  box-shadow: 0 0 0 0.2rem rgba(128, 189, 255, 0.25);
 }
 
 .form-group input.error {
-  border-color: #d32f2f;
+  border-color: var(--color-danger);
 }
 
 .error-message {
-  color: #d32f2f;
+  color: var(--color-danger);
   font-size: 0.8rem;
   margin-top: 5px;
 }
@@ -63,7 +74,7 @@
 }
 
 .remove-field-button {
-  background-color: #f0f0f0;
+  background-color: var(--color-bg-secondary);
   border: none;
   border-radius: 50%;
   width: 30px;
@@ -73,11 +84,11 @@
   justify-content: center;
   cursor: pointer;
   font-size: 18px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .remove-field-button:hover {
-  background-color: #e0e0e0;
+  background-color: var(--color-bg-tertiary);
 }
 
 .remove-field-button:disabled {
@@ -88,7 +99,7 @@
 .add-field-button {
   background-color: transparent;
   border: none;
-  color: #4285f4;
+  color: var(--color-primary);
   padding: 5px 0;
   cursor: pointer;
   font-size: 14px;
@@ -97,6 +108,7 @@
 
 .add-field-button:hover {
   text-decoration: underline;
+  color: var(--color-primary-hover);
 }
 
 .form-actions {
@@ -104,7 +116,7 @@
   justify-content: space-between;
   align-items: center;
   margin-top: 30px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--color-border-secondary);
   padding-top: 20px;
 }
 
@@ -119,21 +131,22 @@
 }
 
 .cancel-button {
-  background-color: #f0f0f0;
+  background-color: var(--color-bg-secondary);
   border: none;
   border-radius: 4px;
   padding: 10px 20px;
   cursor: pointer;
   font-weight: 500;
+  color: var(--color-text-primary);
 }
 
 .cancel-button:hover {
-  background-color: #e0e0e0;
+  background-color: var(--color-bg-tertiary);
 }
 
 .save-button {
-  background-color: #4285f4;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
   border: none;
   border-radius: 4px;
   padding: 10px 20px;
@@ -142,12 +155,12 @@
 }
 
 .save-button:hover {
-  background-color: #3367d6;
+  background-color: var(--color-primary-hover);
 }
 
 .delete-button {
-  background-color: #d32f2f;
-  color: white;
+  background-color: var(--color-danger);
+  color: var(--color-text-inverse);
   border: none;
   border-radius: 4px;
   padding: 10px 20px;
@@ -156,7 +169,7 @@
 }
 
 .delete-button:hover {
-  background-color: #b71c1c;
+  background-color: var(--color-danger-hover);
 }
 
 .save-button:disabled,
@@ -167,9 +180,10 @@
 }
 
 .form-error-message {
-  background-color: #ffebee;
-  color: #d32f2f;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-danger);
   padding: 10px 15px;
   border-radius: 4px;
   margin-bottom: 20px;
+  border: 1px solid var(--color-danger);
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Contact } from '../../types/dav';
+import { EditIcon } from './EditIcon';
 import './ContactCard.css';
 
 interface ContactCardProps {
@@ -33,8 +34,16 @@ export const ContactCard: React.FC<ContactCardProps> = ({
   return (
     <div className="contact-card" onClick={() => onClick(contact)}>
       <div className="contact-card-header">
-        <div className="contact-avatar">
-          {getInitials(contact.fn)}
+        <div className="contact-header-left">
+          <div className="contact-avatar">
+            {getInitials(contact.fn)}
+          </div>
+          <div className={`contact-header-info ${contact.org ? 'has-company' : 'no-company'}`}>
+            <h3 className="contact-name">{contact.fn}</h3>
+            {contact.org && (
+              <p className="contact-org">{contact.org}</p>
+            )}
+          </div>
         </div>
         <button
           className="contact-card-edit-btn"
@@ -42,17 +51,11 @@ export const ContactCard: React.FC<ContactCardProps> = ({
           aria-label="Edit contact"
           title="Edit contact"
         >
-          ✏️
+          <EditIcon size={16} />
         </button>
       </div>
       
       <div className="contact-card-content">
-        <h3 className="contact-name">{contact.fn}</h3>
-        
-        {contact.org && (
-          <p className="contact-org">{contact.org}</p>
-        )}
-        
         {primaryEmail && (
           <p className="contact-email" title={primaryEmail}>
             {primaryEmail}
