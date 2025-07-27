@@ -1195,6 +1195,7 @@ export class DAVClient implements IDAVClient {
             email: this.getVCardPropertyArray(vcard, "email"),
             tel: this.getVCardPropertyArray(vcard, "tel"),
             org: this.getVCardProperty(vcard, "org"),
+            photo: this.getVCardPhoto(vcard),
             etag,
           };
 
@@ -1252,6 +1253,37 @@ export class DAVClient implements IDAVClient {
       }
     } catch (error) {
       // Property doesn't exist or error accessing it
+    }
+    return undefined;
+  }
+
+  /**
+   * Helper method to extract photo data from vCard
+   */
+  private getVCardPhoto(vcard: any): string | undefined {
+    try {
+      const photoProperty = vcard.photo;
+      if (photoProperty && Array.isArray(photoProperty) && photoProperty.length > 0) {
+        const photo = photoProperty[0];
+        
+        // Handle different photo formats
+        if (photo.value) {
+          // If it's already a data URL or URL, return as is
+          if (photo.value.startsWith('data:') || photo.value.startsWith('http')) {
+            return photo.value;
+          }
+          
+          // If it's base64 data, construct data URL
+          if (photo.params && photo.params.type) {
+            return `data:${photo.params.type};base64,${photo.value}`;
+          }
+          
+          // Default to JPEG if no type specified
+          return `data:image/jpeg;base64,${photo.value}`;
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to parse photo from vCard:", error);
     }
     return undefined;
   }
@@ -1395,6 +1427,26 @@ export class DAVClient implements IDAVClient {
       // Add organization
       if (contact.org) {
         vcardData += `ORG:${this.escapeVCardValue(contact.org)}\r\n`;
+      }
+
+      // Add photo
+      if (contact.photo) {
+        // Handle different photo formats
+        if (contact.photo.startsWith('data:')) {
+          // Extract base64 data and MIME type from data URL
+          const matches = contact.photo.match(/^data:([^;]+);base64,(.+)$/);
+          if (matches) {
+            const mimeType = matches[1];
+            const base64Data = matches[2];
+            vcardData += `PHOTO;TYPE=${mimeType};ENCODING=BASE64:${base64Data}\r\n`;
+          }
+        } else if (contact.photo.startsWith('http')) {
+          // URL reference
+          vcardData += `PHOTO;VALUE=URL:${contact.photo}\r\n`;
+        } else {
+          // Assume it's base64 data without data URL wrapper
+          vcardData += `PHOTO;TYPE=JPEG;ENCODING=BASE64:${contact.photo}\r\n`;
+        }
       }
 
       vcardData += "END:VCARD\r\n";

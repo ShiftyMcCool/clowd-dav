@@ -1,7 +1,7 @@
-import React from 'react';
-import { Contact } from '../../types/dav';
-import { EditIcon } from './EditIcon';
-import './ContactCard.css';
+import React from "react";
+import { Contact } from "../../types/dav";
+import { EditIcon } from "./EditIcon";
+import "./ContactCard.css";
 
 interface ContactCardProps {
   contact: Contact;
@@ -12,7 +12,7 @@ interface ContactCardProps {
 export const ContactCard: React.FC<ContactCardProps> = ({
   contact,
   onClick,
-  onEdit
+  onEdit,
 }) => {
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -21,9 +21,9 @@ export const ContactCard: React.FC<ContactCardProps> = ({
 
   const getInitials = (name: string): string => {
     return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -36,13 +36,33 @@ export const ContactCard: React.FC<ContactCardProps> = ({
       <div className="contact-card-header">
         <div className="contact-header-left">
           <div className="contact-avatar">
-            {getInitials(contact.fn)}
-          </div>
-          <div className={`contact-header-info ${contact.org ? 'has-company' : 'no-company'}`}>
-            <h3 className="contact-name">{contact.fn}</h3>
-            {contact.org && (
-              <p className="contact-org">{contact.org}</p>
+            {contact.photo ? (
+              <img
+                src={contact.photo}
+                alt={contact.fn}
+                className="contact-avatar-image"
+                onError={(e) => {
+                  // Fallback to initials if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = "none";
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.classList.add("contact-avatar-fallback");
+                    parent.textContent = getInitials(contact.fn);
+                  }
+                }}
+              />
+            ) : (
+              getInitials(contact.fn)
             )}
+          </div>
+          <div
+            className={`contact-header-info ${
+              contact.org ? "has-company" : "no-company"
+            }`}
+          >
+            <h3 className="contact-name">{contact.fn}</h3>
+            {contact.org && <p className="contact-org">{contact.org}</p>}
           </div>
         </div>
         <button
@@ -54,14 +74,14 @@ export const ContactCard: React.FC<ContactCardProps> = ({
           <EditIcon size={16} />
         </button>
       </div>
-      
+
       <div className="contact-card-content">
         {primaryEmail && (
           <p className="contact-email" title={primaryEmail}>
             {primaryEmail}
           </p>
         )}
-        
+
         {primaryPhone && (
           <p className="contact-phone" title={primaryPhone}>
             {primaryPhone}

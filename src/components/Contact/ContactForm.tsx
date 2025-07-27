@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
+import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import { Contact, AddressBook } from '../../types/dav';
 import { DAVClient } from '../../services/DAVClient';
 import { useLoading } from '../../contexts/LoadingContext';
+import 'react-image-crop/dist/ReactCrop.css';
 import './ContactForm.css';
 
 interface ContactFormProps {
@@ -31,12 +33,14 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     org: string;
     email: string[];
     tel: string[];
+    photo?: string;
   }>({
     firstName: contact?.firstName || '',
     lastName: contact?.lastName || '',
     org: contact?.org || '',
     email: contact?.email || [''],
-    tel: contact?.tel || ['']
+    tel: contact?.tel || [''],
+    photo: contact?.photo || undefined
   });
   
   const [errors, setErrors] = useState<{
@@ -47,6 +51,13 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  
+  // Image cropping state
+  const [imgSrc, setImgSrc] = useState<string>('');
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [showCropper, setShowCropper] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   // Validate form data
   const validateForm = (): boolean => {
@@ -122,13 +133,14 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       // Create new contact object
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       const contactData: Contact = {
-        uid: contact?.uid || `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        uid: contact?.uid || `contact-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         fn: fullName || 'Unnamed Contact',
         firstName: formData.firstName || undefined,
         lastName: formData.lastName || undefined,
         org: filteredData.org || undefined,
         email: filteredData.email.length > 0 ? filteredData.email : undefined,
         tel: filteredData.tel.length > 0 ? filteredData.tel : undefined,
+        photo: formData.photo || undefined,
         etag: contact?.etag
       };
       
@@ -193,6 +205,130 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     });
   };
 
+  // Handle file selection for cropping
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImgSrc(reader.result?.toString() || '');
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Initialize crop when image loads
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    const crop = centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90,
+        },
+        1, // 1:1 aspect ratio for square avatar
+        width,
+        height
+      ),
+      width,
+      height
+    );
+    setCrop(crop);
+  }, []);
+
+  // Generate cropped image canvas
+  const getCroppedImg = useCallback((
+    image: HTMLImageElement,
+    crop: PixelCrop,
+    fileName: string = 'cropped.jpg'
+  ): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('No 2d context');
+    }
+
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
+    // Set canvas size to desired output size (300x300 for avatars)
+    const outputSize = 300;
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      outputSize,
+      outputSize
+    );
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          throw new Error('Canvas is empty');
+        }
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.9);
+    });
+  }, []);
+
+  // Apply crop and save
+  const applyCrop = useCallback(async () => {
+    if (completedCrop && imgRef.current) {
+      try {
+        const croppedImageUrl = await getCroppedImg(imgRef.current, completedCrop);
+        setFormData(prev => ({
+          ...prev,
+          photo: croppedImageUrl
+        }));
+        setShowCropper(false);
+        setImgSrc('');
+      } catch (error) {
+        console.error('Error cropping image:', error);
+        alert('Failed to crop image. Please try again.');
+      }
+    }
+  }, [completedCrop, getCroppedImg]);
+
+  // Cancel cropping
+  const cancelCrop = () => {
+    setShowCropper(false);
+    setImgSrc('');
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+  };
+
+  // Remove photo
+  const removePhoto = () => {
+    setFormData(prev => ({
+      ...prev,
+      photo: undefined
+    }));
+  };
+
+  // Get initials for avatar fallback
+  const getInitials = (firstName: string, lastName: string): string => {
+    const first = firstName.charAt(0).toUpperCase();
+    const last = lastName.charAt(0).toUpperCase();
+    return first + last || 'U';
+  };
+
   return (
     <form onSubmit={handleSubmit} className="contact-form">
         <div className="form-group">
@@ -231,6 +367,94 @@ export const ContactForm: React.FC<ContactFormProps> = ({
             onChange={handleInputChange}
           />
         </div>
+
+        <div className="form-group">
+          <label>Photo</label>
+          <div className="photo-upload-container">
+            <div className="photo-preview">
+              {formData.photo ? (
+                <img 
+                  src={formData.photo} 
+                  alt="Contact"
+                  className="photo-preview-image"
+                />
+              ) : (
+                <div className="photo-preview-placeholder">
+                  {getInitials(formData.firstName, formData.lastName)}
+                </div>
+              )}
+            </div>
+            <div className="photo-upload-controls">
+              <input
+                type="file"
+                id="photo"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="photo-input"
+              />
+              <label htmlFor="photo" className="photo-upload-button">
+                {formData.photo ? 'Change Photo' : 'Add Photo'}
+              </label>
+              {formData.photo && (
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="photo-remove-button"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Image Cropping Modal */}
+        {showCropper && (
+          <div className="crop-modal-overlay">
+            <div className="crop-modal">
+              <div className="crop-modal-header">
+                <h3>Crop Photo</h3>
+                <p>Drag to reposition and resize the crop area</p>
+              </div>
+              <div className="crop-container">
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  aspect={1}
+                  minWidth={50}
+                  minHeight={50}
+                  circularCrop
+                >
+                  <img
+                    ref={imgRef}
+                    alt="Crop me"
+                    src={imgSrc}
+                    onLoad={onImageLoad}
+                    className="crop-image"
+                  />
+                </ReactCrop>
+              </div>
+              <div className="crop-modal-actions">
+                <button
+                  type="button"
+                  onClick={cancelCrop}
+                  className="cancel-button"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={applyCrop}
+                  className="save-button"
+                  disabled={!completedCrop}
+                >
+                  Apply Crop
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="form-group">
           <label>Email Addresses</label>

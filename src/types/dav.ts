@@ -17,6 +17,7 @@ export interface Contact {
   email?: string[];
   tel?: string[];
   org?: string;
+  photo?: string; // Base64 encoded image data or URL
   etag?: string;
 }
 

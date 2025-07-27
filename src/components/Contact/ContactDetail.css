@@ -64,6 +64,45 @@
   margin-bottom: 20px;
 }
 
+.contact-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.contact-detail-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-inverse);
+  font-weight: 600;
+  font-size: 24px;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.contact-detail-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.contact-detail-avatar-fallback {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+}
+
+.contact-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .contact-detail-name {
   font-size: 1.5rem;
   margin: 0 0 5px 0;

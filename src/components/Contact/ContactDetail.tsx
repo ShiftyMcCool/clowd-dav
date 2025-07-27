@@ -9,6 +9,15 @@ interface ContactDetailProps {
 }
 
 export const ContactDetail: React.FC<ContactDetailProps> = ({ contact, onEdit, onClose }) => {
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div className="contact-detail-container">
       <div className="contact-detail-actions">
@@ -23,10 +32,35 @@ export const ContactDetail: React.FC<ContactDetailProps> = ({ contact, onEdit, o
 
       <div className="contact-detail-content">
         <div className="contact-detail-section">
-          <h3 className="contact-detail-name">{contact.fn}</h3>
-          {contact.org && (
-            <div className="contact-detail-org">{contact.org}</div>
-          )}
+          <div className="contact-detail-header">
+            <div className="contact-detail-avatar">
+              {contact.photo ? (
+                <img 
+                  src={contact.photo} 
+                  alt={contact.fn}
+                  className="contact-detail-avatar-image"
+                  onError={(e) => {
+                    // Fallback to initials if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.classList.add('contact-detail-avatar-fallback');
+                      parent.textContent = getInitials(contact.fn);
+                    }
+                  }}
+                />
+              ) : (
+                getInitials(contact.fn)
+              )}
+            </div>
+            <div className="contact-detail-info">
+              <h3 className="contact-detail-name">{contact.fn}</h3>
+              {contact.org && (
+                <div className="contact-detail-org">{contact.org}</div>
+              )}
+            </div>
+          </div>
         </div>
 
         {contact.email && contact.email.length > 0 && (
