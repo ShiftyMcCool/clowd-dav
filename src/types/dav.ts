@@ -19,6 +19,9 @@ export interface Contact {
   org?: string;
   photo?: string; // Base64 encoded image data or URL
   etag?: string;
+  // Optional address book information (added when loading from multiple address books)
+  addressBookUrl?: string;
+  addressBookName?: string;
 }
 
 export interface Calendar {

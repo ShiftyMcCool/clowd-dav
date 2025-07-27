@@ -63,6 +63,11 @@ export const ContactCard: React.FC<ContactCardProps> = ({
           >
             <h3 className="contact-name">{contact.fn}</h3>
             {contact.org && <p className="contact-org">{contact.org}</p>}
+            {contact.addressBookName && (
+              <p className="contact-address-book" title={`From: ${contact.addressBookName}`}>
+                {contact.addressBookName}
+              </p>
+            )}
           </div>
         </div>
         <button

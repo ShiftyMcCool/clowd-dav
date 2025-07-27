@@ -29,13 +29,7 @@ import { DAVClient } from "./services/DAVClient";
 import { SyncService } from "./services/SyncService";
 import { CacheService } from "./services/CacheService";
 import { ProviderFactory } from "./providers/ProviderFactory";
-import {
-  Calendar,
-  CalendarEvent,
-  DateRange,
-  AddressBook,
-  Contact,
-} from "./types/dav";
+import { Calendar, CalendarEvent, DateRange, AddressBook } from "./types/dav";
 import {
   ErrorHandlingService,
   ErrorMessage as ErrorMessageType,
@@ -47,10 +41,21 @@ import "./styles/themes.css";
 import "./App.css";
 
 // Lazy load components for code splitting
-const SetupForm = lazy(() => import("./components/SetupForm").then(module => ({ default: module.SetupForm })));
-const CalendarView = lazy(() => import("./components/Calendar/CalendarView").then(module => ({ default: module.CalendarView })));
-const EventForm = lazy(() => import("./components/Calendar/EventForm").then(module => ({ default: module.EventForm })));
-
+const SetupForm = lazy(() =>
+  import("./components/SetupForm").then((module) => ({
+    default: module.SetupForm,
+  }))
+);
+const CalendarView = lazy(() =>
+  import("./components/Calendar/CalendarView").then((module) => ({
+    default: module.CalendarView,
+  }))
+);
+const EventForm = lazy(() =>
+  import("./components/Calendar/EventForm").then((module) => ({
+    default: module.EventForm,
+  }))
+);
 
 // Protected route component
 const ProtectedRoute: React.FC<{
@@ -77,20 +82,20 @@ const NavigationWrapper: React.FC<{
   visibleCalendars: Set<string>;
   onCalendarToggle: (calendarUrl: string) => void;
   addressBooks: AddressBook[];
-  selectedAddressBook: AddressBook | null;
-  onAddressBookChange: (addressBook: AddressBook) => void;
-}> = ({ 
-  currentView, 
-  username, 
-  onLogout, 
-  syncService, 
+  visibleAddressBooks: Set<string>;
+  onAddressBookToggle: (addressBookUrl: string) => void;
+}> = ({
+  currentView,
+  username,
+  onLogout,
+  syncService,
   onManualSync,
   calendars,
   visibleCalendars,
   onCalendarToggle,
   addressBooks,
-  selectedAddressBook,
-  onAddressBookChange
+  visibleAddressBooks,
+  onAddressBookToggle,
 }) => {
   const navigate = useNavigate();
 
@@ -110,8 +115,8 @@ const NavigationWrapper: React.FC<{
       visibleCalendars={visibleCalendars}
       onCalendarToggle={onCalendarToggle}
       addressBooks={addressBooks}
-      selectedAddressBook={selectedAddressBook}
-      onAddressBookChange={onAddressBookChange}
+      visibleAddressBooks={visibleAddressBooks}
+      onAddressBookToggle={onAddressBookToggle}
     />
   );
 };
@@ -138,14 +143,19 @@ const AppContent: React.FC = () => {
   const [calendarCurrentDate, setCalendarCurrentDate] = useState<Date>(
     new Date()
   );
-  const [calendarViewType, setCalendarViewType] = useState<"month" | "week" | "day">("month");
-  
-  const [visibleCalendars, setVisibleCalendars] = useState<Set<string>>(new Set());
+  const [calendarViewType, setCalendarViewType] = useState<
+    "month" | "week" | "day"
+  >("month");
+
+  const [visibleCalendars, setVisibleCalendars] = useState<Set<string>>(
+    new Set()
+  );
 
   // Contact state
   const [addressBooks, setAddressBooks] = useState<AddressBook[]>([]);
-  const [selectedAddressBook, setSelectedAddressBook] =
-    useState<AddressBook | null>(null);
+  const [visibleAddressBooks, setVisibleAddressBooks] = useState<Set<string>>(
+    new Set()
+  );
 
   const [contactRefreshTrigger, setContactRefreshTrigger] = useState(0);
 
@@ -192,17 +202,15 @@ const AppContent: React.FC = () => {
       console.log("Setting calendars:", cachedCalendars.length);
       const calendarsWithColors = assignDefaultColors(cachedCalendars);
       setCalendars(calendarsWithColors);
-      
+
       // Initialize all calendars as visible by default
-      setVisibleCalendars(new Set(calendarsWithColors.map(cal => cal.url)));
-      
+      setVisibleCalendars(new Set(calendarsWithColors.map((cal) => cal.url)));
+
       console.log("Setting address books:", cachedAddressBooks.length);
       setAddressBooks(cachedAddressBooks);
 
-      // Select first address book by default
-      if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
-        setSelectedAddressBook(cachedAddressBooks[0]);
-      }
+      // Initialize all address books as visible by default
+      setVisibleAddressBooks(new Set(cachedAddressBooks.map((ab) => ab.url)));
 
       // Events will be loaded by the useEffect when calendars become available
     } catch (error) {
@@ -213,42 +221,53 @@ const AppContent: React.FC = () => {
         }`
       );
     }
-  }, [sync, selectedAddressBook, errorService]);
+  }, [sync, errorService]);
 
-  const handleSetupComplete = useCallback(async (config: AuthConfig, masterPassword?: string) => {
-    showLoading("Setting up connection...", "large");
+  const handleSetupComplete = useCallback(
+    async (config: AuthConfig, masterPassword?: string) => {
+      showLoading("Setting up connection...", "large");
 
-    try {
-      setCurrentConfig(config);
-      setIsAuthenticated(true);
+      try {
+        setCurrentConfig(config);
+        setIsAuthenticated(true);
 
-      // Initialize DAV client with configuration
-      davClient.setAuthConfig(config);
+        // Initialize DAV client with configuration
+        davClient.setAuthConfig(config);
 
-      // Set up provider
-      const provider = await ProviderFactory.createProviderForServer(
-        config.caldavUrl
-      );
-      if (provider) {
-        davClient.setProvider(provider);
+        // Set up provider
+        const provider = await ProviderFactory.createProviderForServer(
+          config.caldavUrl
+        );
+        if (provider) {
+          davClient.setProvider(provider);
 
-        // Load calendars and address books using sync service
-        await loadCalendarsAndAddressBooks();
-      } else {
-        console.error("No compatible provider found for the server");
-        errorService.reportError("No compatible provider found for the server");
+          // Load calendars and address books using sync service
+          await loadCalendarsAndAddressBooks();
+        } else {
+          console.error("No compatible provider found for the server");
+          errorService.reportError(
+            "No compatible provider found for the server"
+          );
+        }
+      } catch (error) {
+        console.error("Error setting up DAV client:", error);
+        errorService.reportError(
+          `Failed to setup connection: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+      } finally {
+        hideLoading();
       }
-    } catch (error) {
-      console.error("Error setting up DAV client:", error);
-      errorService.reportError(
-        `Failed to setup connection: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    } finally {
-      hideLoading();
-    }
-  }, [davClient, errorService, hideLoading, showLoading, loadCalendarsAndAddressBooks]);
+    },
+    [
+      davClient,
+      errorService,
+      hideLoading,
+      showLoading,
+      loadCalendarsAndAddressBooks,
+    ]
+  );
 
   // Check for stored credentials and session on app startup
   useEffect(() => {
@@ -260,47 +279,53 @@ const AppContent: React.FC = () => {
       hasCheckedStoredCredentials.current = true;
 
       try {
-        console.log('Checking for stored credentials and session...');
-        
+        console.log("Checking for stored credentials and session...");
+
         // Check if we have a stored session token
         const sessionToken = authManager.getStoredSessionToken();
-        console.log('Session token found:', !!sessionToken);
-        
+        console.log("Session token found:", !!sessionToken);
+
         if (sessionToken) {
           try {
-            console.log('Attempting to restore session with token...');
-            
+            console.log("Attempting to restore session with token...");
+
             // If we have stored credentials, try to decrypt them
             if (authManager.hasStoredCredentials()) {
-              const credentials = await authManager.getStoredCredentials(sessionToken);
+              const credentials = await authManager.getStoredCredentials(
+                sessionToken
+              );
               if (credentials) {
-                console.log('Successfully restored session from stored credentials...');
+                console.log(
+                  "Successfully restored session from stored credentials..."
+                );
                 await handleSetupComplete(credentials, sessionToken);
                 setInitialLoading(false);
                 return;
               }
             }
-            
+
             // If no stored credentials but we have a session token, check if it's a temporary session
             const currentCredentials = authManager.getCurrentCredentials();
             if (currentCredentials) {
-              console.log('Found credentials in memory, restoring session...');
+              console.log("Found credentials in memory, restoring session...");
               await handleSetupComplete(currentCredentials, sessionToken);
               setInitialLoading(false);
               return;
             }
-            
-            console.log('No valid credentials found for session token, clearing session');
+
+            console.log(
+              "No valid credentials found for session token, clearing session"
+            );
             authManager.clearSession();
           } catch (error) {
-            console.log('Error restoring session:', error);
+            console.log("Error restoring session:", error);
             authManager.clearSession();
           }
         } else {
-          console.log('No session token found');
+          console.log("No session token found");
         }
-        
-        console.log('No valid session found, user needs to login');
+
+        console.log("No valid session found, user needs to login");
         setInitialLoading(false);
       } catch (error) {
         console.error("Error checking stored credentials:", error);
@@ -420,21 +445,24 @@ const AppContent: React.FC = () => {
     [loadEvents]
   );
 
-  const handleEventClick = useCallback((event: CalendarEvent) => {
-    setEditingEvent(event);
+  const handleEventClick = useCallback(
+    (event: CalendarEvent) => {
+      setEditingEvent(event);
 
-    // Find the calendar this event belongs to
-    if (event.calendarUrl) {
-      const eventCalendar = calendars.find(
-        (cal) => cal.url === event.calendarUrl
-      );
-      if (eventCalendar) {
-        setSelectedCalendar(eventCalendar);
+      // Find the calendar this event belongs to
+      if (event.calendarUrl) {
+        const eventCalendar = calendars.find(
+          (cal) => cal.url === event.calendarUrl
+        );
+        if (eventCalendar) {
+          setSelectedCalendar(eventCalendar);
+        }
       }
-    }
 
-    setShowEventForm(true);
-  }, [calendars]);
+      setShowEventForm(true);
+    },
+    [calendars]
+  );
 
   const handleCreateEvent = useCallback(
     (date: Date) => {
@@ -572,10 +600,8 @@ const AppContent: React.FC = () => {
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
       setAddressBooks(cachedAddressBooks);
 
-      // Select the first address book by default if available
-      if (cachedAddressBooks.length > 0 && !selectedAddressBook) {
-        setSelectedAddressBook(cachedAddressBooks[0]);
-      }
+      // Initialize all address books as visible by default
+      setVisibleAddressBooks(new Set(cachedAddressBooks.map((ab) => ab.url)));
     } catch (error) {
       console.error("Error loading address books:", error);
 
@@ -597,14 +623,18 @@ const AppContent: React.FC = () => {
     }
   };
 
-
-
-
-
-  // Handle address book change
-  const handleAddressBookChange = (addressBook: AddressBook) => {
-    setSelectedAddressBook(addressBook);
-  };
+  // Handle address book toggle
+  const handleAddressBookToggle = useCallback((addressBookUrl: string) => {
+    setVisibleAddressBooks((prev) => {
+      const newVisible = new Set(prev);
+      if (newVisible.has(addressBookUrl)) {
+        newVisible.delete(addressBookUrl);
+      } else {
+        newVisible.add(addressBookUrl);
+      }
+      return newVisible;
+    });
+  }, []);
 
   const handleLogout = () => {
     setIsAuthenticated(false);
@@ -613,14 +643,12 @@ const AppContent: React.FC = () => {
     setCalendars([]);
     setEvents([]);
     setAddressBooks([]);
-    setSelectedAddressBook(null);
+    setVisibleAddressBooks(new Set());
     // Reset calendar state
     setVisibleCalendars(new Set());
     // Optionally clear stored credentials
     // authManager.clearCredentials();
   };
-
-
 
   // Setup component
   const SetupComponent = () => {
@@ -646,8 +674,10 @@ const AppContent: React.FC = () => {
           <div className="view-container">
             <CalendarView
               calendars={calendars}
-              events={events.filter(event => 
-                event.calendarUrl ? visibleCalendars.has(event.calendarUrl) : true
+              events={events.filter((event) =>
+                event.calendarUrl
+                  ? visibleCalendars.has(event.calendarUrl)
+                  : true
               )}
               onDateRangeChange={handleDateRangeChange}
               onEventClick={handleEventClick}
@@ -711,13 +741,13 @@ const AppContent: React.FC = () => {
             <div className="contacts-container">
               <div className="contacts-layout">
                 <ContactCardGrid
-                  addressBook={selectedAddressBook}
+                  addressBooks={addressBooks.filter((ab) =>
+                    visibleAddressBooks.has(ab.url)
+                  )}
                   syncService={syncService}
                   davClient={davClient}
                   refreshTrigger={contactRefreshTrigger}
                 />
-
-
               </div>
             </div>
           )}
@@ -728,7 +758,7 @@ const AppContent: React.FC = () => {
 
   // Calendar handlers
   const handleCalendarToggle = useCallback((calendarUrl: string) => {
-    setVisibleCalendars(prev => {
+    setVisibleCalendars((prev) => {
       const newVisible = new Set(prev);
       if (newVisible.has(calendarUrl)) {
         newVisible.delete(calendarUrl);
@@ -742,10 +772,10 @@ const AppContent: React.FC = () => {
   // Update current view based on location
   const location = useLocation();
   useEffect(() => {
-    if (location.pathname.includes('/calendar')) {
-      setCurrentView('calendar');
-    } else if (location.pathname.includes('/contacts')) {
-      setCurrentView('contacts');
+    if (location.pathname.includes("/calendar")) {
+      setCurrentView("calendar");
+    } else if (location.pathname.includes("/contacts")) {
+      setCurrentView("contacts");
     }
   }, [location.pathname]);
 
@@ -782,19 +812,30 @@ const AppContent: React.FC = () => {
 
       const calendarsWithColors = assignDefaultColors(cachedCalendars);
       setCalendars(calendarsWithColors);
-      
+
       // Update visible calendars to include any new calendars
-      setVisibleCalendars(prev => {
+      setVisibleCalendars((prev) => {
         const newVisible = new Set(prev);
-        calendarsWithColors.forEach(cal => {
+        calendarsWithColors.forEach((cal) => {
           if (!newVisible.has(cal.url)) {
             newVisible.add(cal.url); // New calendars are visible by default
           }
         });
         return newVisible;
       });
-      
+
       setAddressBooks(cachedAddressBooks);
+
+      // Update visible address books to include any new address books
+      setVisibleAddressBooks((prev) => {
+        const newVisible = new Set(prev);
+        cachedAddressBooks.forEach((ab) => {
+          if (!newVisible.has(ab.url)) {
+            newVisible.add(ab.url); // New address books are visible by default
+          }
+        });
+        return newVisible;
+      });
 
       // Refresh current view
       if (currentDateRange) {
@@ -820,8 +861,8 @@ const AppContent: React.FC = () => {
           visibleCalendars={visibleCalendars}
           onCalendarToggle={handleCalendarToggle}
           addressBooks={addressBooks}
-          selectedAddressBook={selectedAddressBook}
-          onAddressBookChange={handleAddressBookChange}
+          visibleAddressBooks={visibleAddressBooks}
+          onAddressBookToggle={handleAddressBookToggle}
         />
       )}
 

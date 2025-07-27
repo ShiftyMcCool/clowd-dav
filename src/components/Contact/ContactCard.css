@@ -129,6 +129,18 @@
   text-overflow: ellipsis;
 }
 
+.contact-address-book {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.8;
+}
+
 .contact-email,
 .contact-phone {
   margin: 0;
@@ -171,6 +183,10 @@
   
   .contact-org {
     font-size: 13px;
+  }
+  
+  .contact-address-book {
+    font-size: 11px;
   }
   
   .contact-email,

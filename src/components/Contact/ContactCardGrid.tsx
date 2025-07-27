@@ -31,14 +31,14 @@ const contactCache = {
 };
 
 interface ContactCardGridProps {
-  addressBook: AddressBook | null;
+  addressBooks: AddressBook[];
   syncService: SyncService;
   davClient: DAVClient;
   refreshTrigger?: number;
 }
 
 export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
-  addressBook,
+  addressBooks,
   syncService,
   davClient,
   refreshTrigger,
@@ -58,9 +58,9 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
   const [showDetail, setShowDetail] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
-  // Fetch contacts function
+  // Fetch contacts function for multiple address books
   const fetchContacts = async () => {
-    if (!addressBook) {
+    if (addressBooks.length === 0) {
       const emptyContacts: Contact[] = [];
       setContacts(emptyContacts);
       contactCache.updateContacts(emptyContacts);
@@ -70,10 +70,34 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const fetchedContacts = await syncService.getContacts(addressBook);
-      console.log(`[ContactCardGrid] Fetch completed, setting ${fetchedContacts.length} contacts`);
-      setContacts(fetchedContacts);
-      contactCache.updateContacts(fetchedContacts);
+      
+      const allContacts: Contact[] = [];
+      const failedAddressBooks: string[] = [];
+      
+      // Fetch contacts from all visible address books
+      for (const addressBook of addressBooks) {
+        try {
+          const fetchedContacts = await syncService.getContacts(addressBook);
+          // Add address book info to each contact for identification
+          const contactsWithAddressBook = fetchedContacts.map(contact => ({
+            ...contact,
+            addressBookUrl: addressBook.url,
+            addressBookName: addressBook.displayName
+          }));
+          allContacts.push(...contactsWithAddressBook);
+        } catch (err) {
+          console.error(`Error fetching contacts from ${addressBook.displayName}:`, err);
+          failedAddressBooks.push(addressBook.displayName);
+        }
+      }
+      
+      if (failedAddressBooks.length > 0) {
+        setError(`Failed to load contacts from: ${failedAddressBooks.join(', ')}`);
+      }
+      
+      console.log(`[ContactCardGrid] Fetch completed, setting ${allContacts.length} contacts from ${addressBooks.length} address books`);
+      setContacts(allContacts);
+      contactCache.updateContacts(allContacts);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load contacts"
@@ -86,12 +110,14 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
 
   // Use global cache to persist across component lifecycles
   useEffect(() => {
-    if (!addressBook) {
+    if (addressBooks.length === 0) {
       setContacts([]);
       return;
     }
     
-    const currentKey = `${addressBook.url}-${refreshTrigger || 0}`;
+    // Create a key based on all visible address books
+    const addressBookUrls = addressBooks.map(ab => ab.url).sort().join(',');
+    const currentKey = `${addressBookUrls}-${refreshTrigger || 0}`;
     
     // Only fetch if the key has actually changed from the global cache
     if (currentKey !== contactCache.lastFetchKey) {
@@ -107,7 +133,7 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressBook?.url, refreshTrigger]);
+  }, [addressBooks.map(ab => ab.url).join(','), refreshTrigger]);
 
   // Set up listener for cache updates
   useEffect(() => {
@@ -125,11 +151,11 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
 
   // Separate effect to ensure contacts are always in sync with cache
   useEffect(() => {
-    if (addressBook && contactCache.contacts.length > 0 && contacts.length === 0) {
+    if (addressBooks.length > 0 && contactCache.contacts.length > 0 && contacts.length === 0) {
       console.log(`[ContactCardGrid] Initial sync with cached contacts (${contactCache.contacts.length} contacts)`);
       setContacts(contactCache.contacts);
     }
-  }, [addressBook, contacts.length]);
+  }, [addressBooks.length, contacts.length]);
 
   const filteredContacts = contacts.filter((contact) => {
     const searchLower = searchTerm.toLowerCase();
@@ -191,10 +217,18 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
   };
 
   const handleContactDelete = async (contact: Contact) => {
-    if (!addressBook) return;
+    // Find the address book this contact belongs to
+    const contactAddressBook = addressBooks.find(ab => 
+      (contact as any).addressBookUrl === ab.url
+    );
+    
+    if (!contactAddressBook) {
+      console.error("Could not find address book for contact");
+      return;
+    }
     
     try {
-      await davClient.deleteContact(addressBook, contact);
+      await davClient.deleteContact(contactAddressBook, contact);
       // Refresh contacts after delete
       await fetchContacts();
       
@@ -215,10 +249,10 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
     setSelectedContact(null);
   };
 
-  if (!addressBook) {
+  if (addressBooks.length === 0) {
     return (
       <div className="contact-grid-empty">
-        <p>Please select an address book to view contacts.</p>
+        <p>No address books selected. Please select address books from the sidebar to view contacts.</p>
       </div>
     );
   }
@@ -236,7 +270,12 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
     <>
       <div className="contact-grid-container">
         <div className="contact-grid-header">
-          <h2>{addressBook.displayName}</h2>
+          <h2>
+            {addressBooks.length === 1 
+              ? addressBooks[0].displayName 
+              : `Contacts (${addressBooks.length} address books)`
+            }
+          </h2>
           <button
             className="add-contact-button"
             onClick={handleCreateContact}
@@ -322,9 +361,9 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
         title="Create New Contact"
         size="medium"
       >
-        {addressBook && (
+        {addressBooks.length > 0 && (
           <ContactForm
-            addressBook={addressBook}
+            addressBook={addressBooks[0]} // Use first address book for new contacts
             davClient={davClient}
             onSave={handleContactSave}
             onCancel={closeModals}
@@ -339,16 +378,21 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
         title="Edit Contact"
         size="medium"
       >
-        {addressBook && selectedContact && (
-          <ContactForm
-            contact={selectedContact}
-            addressBook={addressBook}
-            davClient={davClient}
-            onSave={handleContactSave}
-            onCancel={closeModals}
-            onDelete={handleContactDelete}
-          />
-        )}
+        {selectedContact && (() => {
+          const contactAddressBook = addressBooks.find(ab => 
+            (selectedContact as any).addressBookUrl === ab.url
+          );
+          return contactAddressBook && (
+            <ContactForm
+              contact={selectedContact}
+              addressBook={contactAddressBook}
+              davClient={davClient}
+              onSave={handleContactSave}
+              onCancel={closeModals}
+              onDelete={handleContactDelete}
+            />
+          );
+        })()}
       </Modal>
 
       {/* Contact Detail Modal */}

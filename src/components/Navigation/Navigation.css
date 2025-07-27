@@ -411,6 +411,37 @@
   font-size: 0.875rem;
 }
 
+/* Address Book Controls */
+.address-book-controls {
+  margin-bottom: 1rem;
+  margin-right: 1.5rem;
+}
+
+.address-book-toggle-all {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-nav-text-muted);
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+  opacity: 0.8;
+}
+
+.address-book-toggle-all:hover {
+  background: var(--color-nav-hover);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--color-nav-text);
+  opacity: 1;
+}
+
 /* Address Book List */
 .address-book-list {
   display: flex;
@@ -439,38 +470,39 @@
   background: var(--color-nav-hover);
 }
 
-.address-book-radio {
+.address-book-checkbox {
   display: none;
 }
 
-.address-book-radio-custom {
+.address-book-checkbox-custom {
   display: inline-block;
   width: 18px;
   height: 18px;
   border: 2px solid var(--color-nav-text-muted);
-  border-radius: 50%;
+  border-radius: 3px;
   position: relative;
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
-.address-book-radio:checked + .address-book-radio-custom {
+.address-book-checkbox:checked + .address-book-checkbox-custom {
+  background: var(--color-primary);
   border-color: var(--color-primary);
 }
 
-.radio-checkmark {
+.checkbox-checkmark {
   display: none;
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  background: var(--color-primary);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
+  left: 3px;
+  top: 0px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
-.address-book-radio:checked + .address-book-radio-custom .radio-checkmark {
+.address-book-checkbox:checked + .address-book-checkbox-custom .checkbox-checkmark {
   display: block;
 }
 

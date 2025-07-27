@@ -19,8 +19,8 @@ interface NavigationProps {
   onCalendarToggle?: (calendarUrl: string) => void;
   // Address book-specific props
   addressBooks?: AddressBook[];
-  selectedAddressBook?: AddressBook | null;
-  onAddressBookChange?: (addressBook: AddressBook) => void;
+  visibleAddressBooks?: Set<string>;
+  onAddressBookToggle?: (addressBookUrl: string) => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -34,8 +34,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   visibleCalendars = new Set(),
   onCalendarToggle,
   addressBooks = [],
-  selectedAddressBook,
-  onAddressBookChange,
+  visibleAddressBooks = new Set(),
+  onAddressBookToggle,
 }) => {
   const { theme, toggleTheme } = useTheme();
   // Initialize sidebar state based on screen size
@@ -79,6 +79,19 @@ export const Navigation: React.FC<NavigationProps> = ({
         onCalendarToggle(calendar.url);
       } else if (!allVisible && !visibleCalendars.has(calendar.url)) {
         onCalendarToggle(calendar.url);
+      }
+    });
+  };
+
+  const handleAddressBookToggleAll = () => {
+    if (!onAddressBookToggle) return;
+    
+    const allVisible = addressBooks.every(ab => visibleAddressBooks.has(ab.url));
+    addressBooks.forEach(addressBook => {
+      if (allVisible && visibleAddressBooks.has(addressBook.url)) {
+        onAddressBookToggle(addressBook.url);
+      } else if (!allVisible && !visibleAddressBooks.has(addressBook.url)) {
+        onAddressBookToggle(addressBook.url);
       }
     });
   };
@@ -232,19 +245,37 @@ export const Navigation: React.FC<NavigationProps> = ({
                 
                 {sidebarOpen && currentView === "contacts" && expandedSections.has("contacts") && (
                   <div className="nav-section-content">
+                    {addressBooks.length > 1 && (
+                      <div className="address-book-controls">
+                        <button
+                          className="address-book-toggle-all"
+                          onClick={handleAddressBookToggleAll}
+                          title={addressBooks.every(ab => visibleAddressBooks.has(ab.url)) ? 'Hide all address books' : 'Show all address books'}
+                        >
+                          <span className={`toggle-all-icon ${
+                            addressBooks.every(ab => visibleAddressBooks.has(ab.url)) 
+                              ? 'all-visible' 
+                              : addressBooks.some(ab => visibleAddressBooks.has(ab.url)) 
+                                ? 'some-visible' 
+                                : 'none-visible'
+                          }`}></span>
+                          {addressBooks.every(ab => visibleAddressBooks.has(ab.url)) ? 'Hide All' : 'Show All'}
+                        </button>
+                      </div>
+                    )}
+
                     <div className="address-book-list">
                       {addressBooks.map(addressBook => (
                         <div key={addressBook.url} className="address-book-item">
                           <label className="address-book-toggle-label">
                             <input
-                              type="radio"
-                              name="address-book-selection"
-                              checked={selectedAddressBook?.url === addressBook.url}
-                              onChange={() => onAddressBookChange?.(addressBook)}
-                              className="address-book-radio"
+                              type="checkbox"
+                              checked={visibleAddressBooks.has(addressBook.url)}
+                              onChange={() => onAddressBookToggle?.(addressBook.url)}
+                              className="address-book-checkbox"
                             />
-                            <span className="address-book-radio-custom">
-                              <span className="radio-checkmark"></span>
+                            <span className="address-book-checkbox-custom">
+                              <span className="checkbox-checkmark"></span>
                             </span>
                             <span className="address-book-name" title={addressBook.displayName}>
                               {addressBook.displayName}
