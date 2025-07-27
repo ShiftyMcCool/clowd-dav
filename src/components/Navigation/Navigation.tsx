@@ -3,7 +3,7 @@ import { ThemeToggle } from "../common/ThemeToggle";
 import { SyncStatusButton } from "../common/SyncStatusButton";
 import { SyncService } from "../../services/SyncService";
 import { useTheme } from "../../contexts/ThemeContext";
-import { Calendar } from "../../types/dav";
+import { Calendar, AddressBook } from "../../types/dav";
 import "./Navigation.css";
 
 interface NavigationProps {
@@ -17,6 +17,10 @@ interface NavigationProps {
   calendars?: Calendar[];
   visibleCalendars?: Set<string>;
   onCalendarToggle?: (calendarUrl: string) => void;
+  // Address book-specific props
+  addressBooks?: AddressBook[];
+  selectedAddressBook?: AddressBook | null;
+  onAddressBookChange?: (addressBook: AddressBook) => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -29,6 +33,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   calendars = [],
   visibleCalendars = new Set(),
   onCalendarToggle,
+  addressBooks = [],
+  selectedAddressBook,
+  onAddressBookChange,
 }) => {
   const { theme, toggleTheme } = useTheme();
   // Initialize sidebar state based on screen size
@@ -210,7 +217,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                     <span className="nav-icon contacts-icon"></span>
                     {sidebarOpen && <span className="nav-text">Contacts</span>}
                   </button>
-                  {sidebarOpen && currentView === "contacts" && (
+                  {sidebarOpen && currentView === "contacts" && addressBooks.length > 0 && (
                     <button
                       className={`section-expand-button ${
                         expandedSections.has("contacts") ? "expanded" : ""
@@ -225,9 +232,33 @@ export const Navigation: React.FC<NavigationProps> = ({
                 
                 {sidebarOpen && currentView === "contacts" && expandedSections.has("contacts") && (
                   <div className="nav-section-content">
-                    <div className="contacts-placeholder">
-                      <p>Contact options will appear here</p>
+                    <div className="address-book-list">
+                      {addressBooks.map(addressBook => (
+                        <div key={addressBook.url} className="address-book-item">
+                          <label className="address-book-toggle-label">
+                            <input
+                              type="radio"
+                              name="address-book-selection"
+                              checked={selectedAddressBook?.url === addressBook.url}
+                              onChange={() => onAddressBookChange?.(addressBook)}
+                              className="address-book-radio"
+                            />
+                            <span className="address-book-radio-custom">
+                              <span className="radio-checkmark"></span>
+                            </span>
+                            <span className="address-book-name" title={addressBook.displayName}>
+                              {addressBook.displayName}
+                            </span>
+                          </label>
+                        </div>
+                      ))}
                     </div>
+
+                    {addressBooks.length === 0 && (
+                      <div className="address-book-empty-state">
+                        <p>No address books available</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -76,6 +76,9 @@ const NavigationWrapper: React.FC<{
   calendars: Calendar[];
   visibleCalendars: Set<string>;
   onCalendarToggle: (calendarUrl: string) => void;
+  addressBooks: AddressBook[];
+  selectedAddressBook: AddressBook | null;
+  onAddressBookChange: (addressBook: AddressBook) => void;
 }> = ({ 
   currentView, 
   username, 
@@ -84,7 +87,10 @@ const NavigationWrapper: React.FC<{
   onManualSync,
   calendars,
   visibleCalendars,
-  onCalendarToggle
+  onCalendarToggle,
+  addressBooks,
+  selectedAddressBook,
+  onAddressBookChange
 }) => {
   const navigate = useNavigate();
 
@@ -103,6 +109,9 @@ const NavigationWrapper: React.FC<{
       calendars={calendars}
       visibleCalendars={visibleCalendars}
       onCalendarToggle={onCalendarToggle}
+      addressBooks={addressBooks}
+      selectedAddressBook={selectedAddressBook}
+      onAddressBookChange={onAddressBookChange}
     />
   );
 };
@@ -700,26 +709,6 @@ const AppContent: React.FC = () => {
             </div>
           ) : (
             <div className="contacts-container">
-              <div className="address-book-selector">
-                <label htmlFor="address-book-select">Address Book:</label>
-                <select
-                  id="address-book-select"
-                  value={selectedAddressBook?.url || ""}
-                  onChange={(e) => {
-                    const selected = addressBooks.find(
-                      (ab) => ab.url === e.target.value
-                    );
-                    if (selected) handleAddressBookChange(selected);
-                  }}
-                >
-                  {addressBooks.map((ab) => (
-                    <option key={ab.url} value={ab.url}>
-                      {ab.displayName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="contacts-layout">
                 <ContactCardGrid
                   addressBook={selectedAddressBook}
@@ -830,6 +819,9 @@ const AppContent: React.FC = () => {
           calendars={calendars}
           visibleCalendars={visibleCalendars}
           onCalendarToggle={handleCalendarToggle}
+          addressBooks={addressBooks}
+          selectedAddressBook={selectedAddressBook}
+          onAddressBookChange={handleAddressBookChange}
         />
       )}
 
