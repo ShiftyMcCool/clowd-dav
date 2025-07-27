@@ -42,7 +42,6 @@ import {
 } from "./services/ErrorHandlingService";
 import { useSync } from "./hooks/useSync";
 import { ContactCardGrid } from "./components/Contact";
-import { CalendarSidebar } from "./components/Calendar/CalendarSidebar";
 import { assignDefaultColors } from "./utils/calendarColors";
 import "./styles/themes.css";
 import "./App.css";
@@ -74,7 +73,19 @@ const NavigationWrapper: React.FC<{
   onLogout: () => void;
   syncService?: SyncService;
   onManualSync?: () => void;
-}> = ({ currentView, username, onLogout, syncService, onManualSync }) => {
+  calendars: Calendar[];
+  visibleCalendars: Set<string>;
+  onCalendarToggle: (calendarUrl: string) => void;
+}> = ({ 
+  currentView, 
+  username, 
+  onLogout, 
+  syncService, 
+  onManualSync,
+  calendars,
+  visibleCalendars,
+  onCalendarToggle
+}) => {
   const navigate = useNavigate();
 
   const handleViewChange = (view: "calendar" | "contacts") => {
@@ -89,6 +100,9 @@ const NavigationWrapper: React.FC<{
       onLogout={onLogout}
       syncService={syncService}
       onManualSync={onManualSync}
+      calendars={calendars}
+      visibleCalendars={visibleCalendars}
+      onCalendarToggle={onCalendarToggle}
     />
   );
 };
@@ -117,10 +131,6 @@ const AppContent: React.FC = () => {
   );
   const [calendarViewType, setCalendarViewType] = useState<"month" | "week" | "day">("month");
   
-  // Calendar sidebar state
-  const [calendarSidebarOpen, setCalendarSidebarOpen] = useState(() => {
-    return window.innerWidth > 1024; // Open by default on larger screens
-  });
   const [visibleCalendars, setVisibleCalendars] = useState<Set<string>>(new Set());
 
   // Contact state
@@ -595,9 +605,8 @@ const AppContent: React.FC = () => {
     setEvents([]);
     setAddressBooks([]);
     setSelectedAddressBook(null);
-    // Reset calendar sidebar state
+    // Reset calendar state
     setVisibleCalendars(new Set());
-    setCalendarSidebarOpen(window.innerWidth > 1024);
     // Optionally clear stored credentials
     // authManager.clearCredentials();
   };
@@ -728,7 +737,7 @@ const AppContent: React.FC = () => {
     );
   };
 
-  // Calendar sidebar handlers
+  // Calendar handlers
   const handleCalendarToggle = useCallback((calendarUrl: string) => {
     setVisibleCalendars(prev => {
       const newVisible = new Set(prev);
@@ -739,22 +748,6 @@ const AppContent: React.FC = () => {
       }
       return newVisible;
     });
-  }, []);
-
-  const handleCalendarSidebarToggle = useCallback(() => {
-    setCalendarSidebarOpen(prev => !prev);
-  }, []);
-
-  // Handle window resize for calendar sidebar
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth <= 1024) {
-        setCalendarSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Update current view based on location
@@ -834,27 +827,13 @@ const AppContent: React.FC = () => {
           onLogout={handleLogout}
           syncService={syncService}
           onManualSync={handleManualSync}
-        />
-      )}
-
-      {/* Calendar Sidebar - only show when authenticated and on calendar view */}
-      {isAuthenticated && currentView === "calendar" && (
-        <CalendarSidebar
           calendars={calendars}
           visibleCalendars={visibleCalendars}
           onCalendarToggle={handleCalendarToggle}
-          isOpen={calendarSidebarOpen}
-          onToggle={handleCalendarSidebarToggle}
         />
       )}
 
-      <main className={`app-main ${
-        isAuthenticated && currentView === "calendar" 
-          ? calendarSidebarOpen 
-            ? "calendar-sidebar-open" 
-            : "calendar-sidebar-collapsed"
-          : ""
-      }`}>
+      <main className="app-main">
         <Routes>
           <Route
             path="/setup"
