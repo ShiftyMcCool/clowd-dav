@@ -171,6 +171,7 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
 
   const handleEditContact = (contact: Contact) => {
     setSelectedContact(contact);
+    setShowDetail(false); // Close detail modal if open
     setShowEditForm(true);
   };
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Contact } from '../../types/dav';
+import { EditIcon } from './EditIcon';
 import './ContactDetail.css';
 
 interface ContactDetailProps {
@@ -18,20 +19,15 @@ export const ContactDetail: React.FC<ContactDetailProps> = ({ contact, onEdit, o
       .slice(0, 2);
   };
 
+  const handleEditClick = () => {
+    onClose(); // Close the detail modal first
+    onEdit(contact); // Then open the edit modal
+  };
+
   return (
     <div className="contact-detail-container">
-      <div className="contact-detail-actions">
-        <button 
-          className="contact-edit-button" 
-          onClick={() => onEdit(contact)}
-          aria-label="Edit contact"
-        >
-          Edit Contact
-        </button>
-      </div>
-
       <div className="contact-detail-content">
-        <div className="contact-detail-section">
+        <div className="contact-detail-header-section">
           <div className="contact-detail-header">
             <div className="contact-detail-avatar">
               {contact.photo ? (
@@ -60,6 +56,14 @@ export const ContactDetail: React.FC<ContactDetailProps> = ({ contact, onEdit, o
                 <div className="contact-detail-org">{contact.org}</div>
               )}
             </div>
+            <button 
+              className="contact-detail-edit-btn" 
+              onClick={handleEditClick}
+              aria-label="Edit contact"
+              title="Edit contact"
+            >
+              <EditIcon size={20} />
+            </button>
           </div>
         </div>
 
