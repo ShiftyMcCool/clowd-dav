@@ -120,6 +120,41 @@ body {
   color: var(--color-text-primary);
 }
 
+/* Mobile touch improvements */
+@media (max-width: 768px) {
+  /* Improve touch targets */
+  button, 
+  .sidebar-nav-link,
+  .calendar-toggle-label,
+  .address-book-toggle-label {
+    min-height: 44px; /* Apple's recommended minimum touch target */
+    min-width: 44px;
+  }
+  
+  /* Prevent text selection on touch */
+  .calendar-grid,
+  .sidebar,
+  .calendar-navigation {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Allow text selection in forms and content areas */
+  input,
+  textarea,
+  .contact-card,
+  .event-form {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+}
+
 /* Button styles */
 .btn-primary {
   background-color: var(--color-primary);

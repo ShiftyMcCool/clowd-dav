@@ -26,14 +26,28 @@
   .calendar-content {
     padding: 0 0.5rem;
   }
+  
+  .calendar-view {
+    font-size: 14px;
+  }
 }
 
 @media (max-width: 480px) {
   .calendar-view {
-    font-size: 14px;
+    font-size: 13px;
   }
   
   .calendar-content {
     padding: 0 0.25rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .calendar-view {
+    font-size: 12px;
+  }
+  
+  .calendar-content {
+    padding: 0 0.1rem;
   }
 }

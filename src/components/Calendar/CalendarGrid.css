@@ -14,6 +14,7 @@
   grid-template-columns: repeat(7, 1fr);
   background: var(--color-bg-tertiary);
   border-bottom: 1px solid var(--color-border-primary);
+  min-width: 0; /* Prevent grid overflow */
 }
 
 .month-day-header {
@@ -37,6 +38,7 @@
   border: 1px solid var(--color-border-primary);
   border-top: none;
   background: var(--color-bg-primary);
+  min-width: 0; /* Prevent grid overflow */
 }
 
 .month-day {
@@ -267,47 +269,93 @@
 @media (max-width: 480px) {
   .month-day-header,
   .week-day-header {
-    padding: 0.5rem 0.25rem;
-  }
-  
-  .month-day-header {
-    font-size: 12px;
-  }
-  
-  .day-name {
-    font-size: 12px;
-  }
-  
-  .month-day {
-    min-height: 60px;
-    padding: 0.2rem;
-  }
-  
-  .day-number {
+    padding: 0.4rem 0.2rem;
     font-size: 11px;
   }
   
-  .event-item {
-    font-size: 9px;
-    padding: 1px 3px;
+  .month-day-header {
+    font-size: 11px;
   }
   
-  .week-day {
-    min-height: 250px;
-    padding: 0.25rem;
+  .day-name {
+    font-size: 11px;
+    margin-bottom: 0.1rem;
   }
   
-  .week-event {
-    font-size: 10px;
-    padding: 2px 4px;
+  .month-day {
+    min-height: 50px;
+    padding: 0.15rem;
   }
   
   .day-number {
-    font-size: 1.1rem;
+    font-size: 10px;
+    margin-bottom: 0.1rem;
+  }
+  
+  .event-item {
+    font-size: 8px;
+    padding: 1px 2px;
+    margin-bottom: 1px;
+  }
+  
+  .more-events {
+    font-size: 8px;
+  }
+  
+  .week-day {
+    min-height: 200px;
+    padding: 0.2rem;
+  }
+  
+  .week-event {
+    font-size: 9px;
+    padding: 2px 3px;
+    margin-bottom: 2px;
+  }
+  
+  .week-event .event-time {
+    font-size: 8px;
+  }
+  
+  .day-number {
+    font-size: 1rem;
   }
   
   .day-number.today {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 360px) {
+  .month-day {
+    min-height: 45px;
+    padding: 0.1rem;
+  }
+  
+  .day-number {
+    font-size: 9px;
+  }
+  
+  .event-item {
+    font-size: 7px;
+    padding: 0px 2px;
+  }
+  
+  .month-day-header {
+    padding: 0.3rem 0.1rem;
+    font-size: 10px;
+  }
+  
+  .week-day {
+    min-height: 180px;
+    padding: 0.15rem;
+  }
+  
+  .day-number.today {
+    width: 1.3rem;
+    height: 1.3rem;
+    font-size: 0.9rem;
   }
 }

@@ -5,6 +5,7 @@
   min-height: 100vh;
   display: flex;
   background-color: var(--color-bg-secondary);
+  overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 /* Main Content Area */
@@ -15,6 +16,9 @@
   overflow: hidden;
   margin-left: 280px;
   transition: margin-left 0.3s ease;
+  min-width: 0; /* Prevent flex item from overflowing */
+  position: relative;
+  z-index: 1; /* Ensure main content is above background but below sidebar */
 }
 
 .app-main.sidebar-collapsed {
@@ -23,12 +27,13 @@
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
-  .app-main {
-    margin-left: 0;
-  }
-  
+  .app-main,
   .app-main.sidebar-collapsed {
-    margin-left: 0;
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-top: 4rem; /* Account for mobile menu button */
+    z-index: 1; /* Keep main content below sidebar on mobile */
+    position: relative;
   }
 }
 
@@ -138,10 +143,13 @@
 @media (max-width: 768px) {
   .contacts-layout {
     flex-direction: column;
+    height: 100%;
   }
 
   .contacts-layout > div {
-    max-height: 50vh;
+    flex: 1;
+    max-height: none; /* Remove height restriction */
+    overflow: auto;
   }
 } /* Sy
 nc Status Indicator */

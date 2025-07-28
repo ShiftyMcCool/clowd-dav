@@ -114,6 +114,64 @@
   z-index: 1000;
 }
 
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .error-container {
+    top: 4.5rem; /* Account for mobile menu button */
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+  }
+  
+  .error-message {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  
+  .error-actions {
+    flex-direction: column;
+    gap: 6px;
+    margin-left: 12px;
+  }
+  
+  .retry-button,
+  .dismiss-button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  
+  .error-text {
+    font-size: 13px;
+  }
+  
+  .error-icon,
+  .warning-icon,
+  .info-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .error-message {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .error-content {
+    margin-bottom: 0;
+  }
+  
+  .error-actions {
+    margin-left: 0;
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
 /* Offline indicator */
 .offline-indicator {
   display: flex;

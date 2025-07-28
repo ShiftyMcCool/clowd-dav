@@ -7,7 +7,7 @@
   background-color: var(--color-nav-bg);
   color: var(--color-nav-text);
   box-shadow: var(--shadow-md);
-  z-index: 1000;
+  z-index: 1001;
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
@@ -220,7 +220,7 @@
   justify-content: center;
   width: 32px;
   height: 46px;
-  border: solid 1px var(--color-nav-bg)
+  border: solid 1px var(--color-nav-bg);
 }
 
 .section-expand-button:hover {
@@ -502,7 +502,9 @@
   transform: rotate(45deg);
 }
 
-.address-book-checkbox:checked + .address-book-checkbox-custom .checkbox-checkmark {
+.address-book-checkbox:checked
+  + .address-book-checkbox-custom
+  .checkbox-checkmark {
   display: block;
 }
 
@@ -642,7 +644,8 @@
 
 .logout-icon {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23ef4444' viewBox='0 0 24 24'%3E%3Cpath d='M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z'/%3E%3C/svg%3E");
-  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%)
+    hue-rotate(346deg) brightness(104%) contrast(97%);
 }
 
 @keyframes loading-spin {
@@ -658,21 +661,136 @@
   display: none;
 }
 
+/* Mobile menu button */
+.mobile-menu-button {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1002; /* Above sidebar and overlay */
+  background: var(--color-bg) !important;
+  border: none !important;
+  border-radius: 12px;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: none;
+  transition: all 0.3s ease;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.mobile-menu-button:hover {
+  background: var(--color-bg) !important;
+  transform: translateY(-2px);
+}
+
+.mobile-menu-button:active {
+  background: var(--color-bg) !important;
+  transform: translateY(0);
+}
+
+.mobile-menu-button:focus {
+  outline: none;
+  background: var(--color-bg) !important;
+}
+
+.mobile-menu-icon {
+  display: block;
+  width: 24px;
+  height: 3px;
+  background-color: white !important;
+  position: relative;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.mobile-menu-icon::before,
+.mobile-menu-icon::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 3px;
+  background-color: white !important;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+  left: 0;
+}
+
+.mobile-menu-icon::before {
+  top: -8px;
+}
+
+.mobile-menu-icon::after {
+  top: 8px;
+}
+
+/* Animated hamburger menu when sidebar is open */
+.mobile-menu-button.menu-open .mobile-menu-icon {
+  background-color: transparent;
+}
+
+.mobile-menu-button.menu-open .mobile-menu-icon::before {
+  transform: rotate(45deg);
+  top: 0;
+}
+
+.mobile-menu-button.menu-open .mobile-menu-icon::after {
+  transform: rotate(-45deg);
+  top: 0;
+}
+
+/* Removed pulse animation to eliminate glow effect */
+
 /* Responsive styles */
 @media (max-width: 768px) {
+  .mobile-menu-button {
+    display: flex !important;
+  }
+
+  /* Hide the original sidebar toggle button on mobile */
+  .sidebar-toggle {
+    display: none;
+  }
+
+  /* Adjust sidebar header layout for mobile */
+  .sidebar-header {
+    justify-content: center;
+    padding: 0; /* Remove all padding to control positioning precisely */
+    height: 68px; /* Fixed height to match mobile menu button area */
+    align-items: center;
+    display: flex;
+    border-bottom: 1px solid var(--color-nav-text-muted);
+  }
+
+  .sidebar-title {
+    margin: 0;
+    text-align: center;
+    line-height: 1;
+    font-size: 1.5rem;
+    padding-top: 0px;
+  }
+
   .sidebar {
+    width: 280px !important;
+    z-index: 1001;
+    transition: transform 0.3s ease;
+    /* Default state: off-screen */
     transform: translateX(-100%);
-    transition: transform 0.3s ease, width 0.3s ease;
   }
 
-  .sidebar-open {
+  /* When sidebar is open on mobile, slide it in */
+  .sidebar.sidebar-open {
     transform: translateX(0);
-    width: 280px;
   }
 
-  .sidebar-collapsed {
+  /* When sidebar is collapsed on mobile, keep it off-screen */
+  .sidebar.sidebar-collapsed {
     transform: translateX(-100%);
-    width: 280px;
   }
 
   .sidebar-overlay {
@@ -683,7 +801,7 @@
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999;
+    z-index: 1000;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -702,5 +820,40 @@
   .sidebar-icon-button {
     flex: 1;
     justify-content: center;
+  }
+}
+
+/* Extra small screens - make button slightly smaller */
+@media (max-width: 480px) {
+  .mobile-menu-button {
+    top: 0.75rem;
+    left: 0.75rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .mobile-menu-icon {
+    width: 20px;
+  }
+
+  .mobile-menu-icon::before,
+  .mobile-menu-icon::after {
+    width: 20px;
+  }
+}
+
+/* Desktop styles - ensure sidebar is always visible */
+@media (min-width: 769px) {
+  .mobile-menu-button {
+    display: none;
+  }
+
+  .sidebar {
+    transform: translateX(0) !important; /* Always visible on desktop */
+  }
+
+  .sidebar-overlay {
+    display: none !important; /* No overlay needed on desktop */
   }
 }

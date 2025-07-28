@@ -40,6 +40,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const { theme, toggleTheme } = useTheme();
   // Initialize sidebar state based on screen size
   const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // On mobile, sidebar should start closed
     return window.innerWidth > 768;
   });
   
@@ -96,25 +97,45 @@ export const Navigation: React.FC<NavigationProps> = ({
     });
   };
 
-  // Update app-main class based on sidebar state
+  // Update app-main class based on sidebar state (only for desktop)
   React.useEffect(() => {
     const appMain = document.querySelector('.app-main');
     if (appMain) {
-      if (sidebarOpen) {
-        appMain.classList.remove('sidebar-collapsed');
+      // Only manage sidebar classes on desktop
+      if (window.innerWidth > 768) {
+        if (sidebarOpen) {
+          appMain.classList.remove('sidebar-collapsed');
+        } else {
+          appMain.classList.add('sidebar-collapsed');
+        }
       } else {
-        appMain.classList.add('sidebar-collapsed');
+        // On mobile, always remove the sidebar-collapsed class
+        appMain.classList.remove('sidebar-collapsed');
       }
     }
   }, [sidebarOpen]);
 
-  // Handle window resize
+  // Handle window resize and initial setup
   React.useEffect(() => {
     const handleResize = () => {
+      const appMain = document.querySelector('.app-main');
       if (window.innerWidth <= 768) {
+        // Mobile: close sidebar and remove desktop classes
         setSidebarOpen(false);
+        if (appMain) {
+          appMain.classList.remove('sidebar-collapsed');
+        }
+      } else {
+        // Desktop: open sidebar and apply appropriate classes
+        setSidebarOpen(true);
+        if (appMain) {
+          appMain.classList.remove('sidebar-collapsed');
+        }
       }
     };
+
+    // Set initial state
+    handleResize();
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -122,6 +143,15 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   return (
     <>
+      {/* Mobile menu button */}
+      <button
+        className={`mobile-menu-button ${sidebarOpen ? 'menu-open' : ''}`}
+        onClick={toggleSidebar}
+        aria-label="Toggle menu"
+      >
+        <span className="mobile-menu-icon"></span>
+      </button>
+
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
         <div className="sidebar-header">
           <button
