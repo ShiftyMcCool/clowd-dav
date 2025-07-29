@@ -28,6 +28,7 @@ import { AuthManager } from "./services/AuthManager";
 import { DAVClient } from "./services/DAVClient";
 import { SyncService } from "./services/SyncService";
 import { CacheService } from "./services/CacheService";
+import { NetworkService } from "./services/NetworkService";
 import { ProviderFactory } from "./providers/ProviderFactory";
 import { Calendar, CalendarEvent, DateRange, AddressBook } from "./types/dav";
 import {
@@ -157,7 +158,7 @@ const AppContent: React.FC = () => {
     new Set()
   );
 
-  const [contactRefreshTrigger, setContactRefreshTrigger] = useState(0);
+  const [contactRefreshTrigger] = useState(0);
 
   // Error handling and offline state
   const [errors, setErrors] = useState<ErrorMessageType[]>([]);
@@ -192,34 +193,72 @@ const AppContent: React.FC = () => {
 
   const loadCalendarsAndAddressBooks = useCallback(async () => {
     try {
-      await sync.syncCalendars();
-      await sync.syncAddressBooks();
+      // Check if we're online before attempting to sync
+      const networkService = NetworkService.getInstance();
+      const isOnline = networkService.isOnline();
 
-      // Update local state with cached data
+      // Always load from cache first to ensure we have data immediately
       const cachedCalendars = CacheService.getCachedCalendars();
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
 
-      console.log("Setting calendars:", cachedCalendars.length);
+      console.log("Setting calendars from cache:", cachedCalendars.length);
       const calendarsWithColors = assignDefaultColors(cachedCalendars);
       setCalendars(calendarsWithColors);
 
       // Initialize all calendars as visible by default
       setVisibleCalendars(new Set(calendarsWithColors.map((cal) => cal.url)));
 
-      console.log("Setting address books:", cachedAddressBooks.length);
+      console.log("Setting address books from cache:", cachedAddressBooks.length);
       setAddressBooks(cachedAddressBooks);
 
       // Initialize all address books as visible by default
       setVisibleAddressBooks(new Set(cachedAddressBooks.map((ab) => ab.url)));
 
+      if (isOnline) {
+        // Online: try to sync with server in background (don't block UI)
+        try {
+          console.log("Online: attempting background sync...");
+          await sync.syncCalendars();
+          await sync.syncAddressBooks();
+          
+          // Update UI with fresh data after sync
+          const freshCalendars = CacheService.getCachedCalendars();
+          const freshAddressBooks = CacheService.getCachedAddressBooks();
+          
+          if (freshCalendars.length !== cachedCalendars.length) {
+            const freshCalendarsWithColors = assignDefaultColors(freshCalendars);
+            setCalendars(freshCalendarsWithColors);
+            setVisibleCalendars(new Set(freshCalendarsWithColors.map((cal) => cal.url)));
+          }
+          
+          if (freshAddressBooks.length !== cachedAddressBooks.length) {
+            setAddressBooks(freshAddressBooks);
+            setVisibleAddressBooks(new Set(freshAddressBooks.map((ab) => ab.url)));
+          }
+          
+          console.log("Background sync completed successfully");
+        } catch (syncError) {
+          console.warn("Background sync failed, continuing with cached data:", syncError);
+          // Don't report this as an error to the user since we have cached data
+        }
+      } else {
+        console.log("Offline: using cached data only");
+      }
+
       // Events will be loaded by the useEffect when calendars become available
     } catch (error) {
       console.error("Error loading calendars and address books:", error);
-      errorService.reportError(
-        `Failed to load data: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+      // Only report error if we have no cached data at all
+      const cachedCalendars = CacheService.getCachedCalendars();
+      const cachedAddressBooks = CacheService.getCachedAddressBooks();
+      
+      if (cachedCalendars.length === 0 && cachedAddressBooks.length === 0) {
+        errorService.reportError(
+          `Failed to load data: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+      }
     }
   }, [sync, errorService]);
 
@@ -234,21 +273,29 @@ const AppContent: React.FC = () => {
         // Initialize DAV client with configuration
         davClient.setAuthConfig(config);
 
-        // Set up provider
-        const provider = await ProviderFactory.createProviderForServer(
-          config.caldavUrl
-        );
-        if (provider) {
-          davClient.setProvider(provider);
+        // Check if we're online
+        const networkService = NetworkService.getInstance();
+        const isOnline = networkService.isOnline();
 
-          // Load calendars and address books using sync service
-          await loadCalendarsAndAddressBooks();
-        } else {
-          console.error("No compatible provider found for the server");
-          errorService.reportError(
-            "No compatible provider found for the server"
+        if (isOnline) {
+          // Set up provider when online
+          const provider = await ProviderFactory.createProviderForServer(
+            config.caldavUrl
           );
+          if (provider) {
+            davClient.setProvider(provider);
+          } else {
+            console.error("No compatible provider found for the server");
+            errorService.reportError(
+              "No compatible provider found for the server"
+            );
+          }
+        } else {
+          console.log("Offline: skipping provider setup, will use cached data");
         }
+
+        // Load calendars and address books (handles both online and offline cases)
+        await loadCalendarsAndAddressBooks();
       } catch (error) {
         console.error("Error setting up DAV client:", error);
         errorService.reportError(
@@ -355,6 +402,8 @@ const AppContent: React.FC = () => {
 
         const allEvents: CalendarEvent[] = [];
         const failedCalendars: string[] = [];
+        const networkService = NetworkService.getInstance();
+        const isOnline = networkService.isOnline();
 
         // Load events from all calendars using sync service
         for (const calendar of calendars) {
@@ -370,7 +419,8 @@ const AppContent: React.FC = () => {
           }
         }
 
-        if (failedCalendars.length > 0) {
+        if (failedCalendars.length > 0 && isOnline) {
+          // Only show error if we're online and still failed
           errorService.reportError(
             `Failed to load events from ${failedCalendars.join(", ")}.`,
             "warning"
@@ -483,7 +533,14 @@ const AppContent: React.FC = () => {
   const handleEventSave = useCallback(
     async (eventData: CalendarEvent, calendar: Calendar) => {
       try {
-        showLoading(editingEvent ? "Updating event..." : "Creating event...");
+        const networkService = NetworkService.getInstance();
+        const isOnline = networkService.isOnline();
+        
+        showLoading(
+          editingEvent 
+            ? (isOnline ? "Updating event..." : "Updating event (offline)...") 
+            : (isOnline ? "Creating event..." : "Creating event (offline)...")
+        );
 
         if (editingEvent) {
           // Check if the calendar has changed (moving event to different calendar)
@@ -492,7 +549,11 @@ const AppContent: React.FC = () => {
 
           if (originalCalendarUrl && originalCalendarUrl !== newCalendarUrl) {
             // Moving event to different calendar: delete from original, create in new
-            showLoading("Moving event to different calendar...");
+            showLoading(
+              isOnline 
+                ? "Moving event to different calendar..." 
+                : "Moving event to different calendar (offline)..."
+            );
 
             // Find the original calendar
             const originalCalendar = calendars.find(
@@ -519,9 +580,17 @@ const AppContent: React.FC = () => {
           await sync.createEvent(calendar, eventWithCalendar);
         }
 
-        // Refresh events after successful save
+        // Refresh events after save (this will show the optimistically cached event)
         if (currentDateRange) {
           await loadEvents(currentDateRange);
+        }
+
+        // Show success message based on online status
+        if (!isOnline) {
+          errorService.reportError(
+            `Event ${editingEvent ? 'updated' : 'created'} offline. Changes will sync when connection is restored.`,
+            "info"
+          );
         }
 
         // Close form
@@ -532,32 +601,58 @@ const AppContent: React.FC = () => {
       } catch (error) {
         console.error("Error saving event:", error);
 
-        // Report error but don't throw it
-        errorService.reportError(
-          `Failed to save event: ${errorService.formatErrorMessage(error)}`,
-          "error"
-        );
-
-        // Don't close the form so the user can try again
-        throw error; // Re-throw to let the form handle the error display
+        // For offline operations, we don't treat them as errors since they're cached
+        const networkService = NetworkService.getInstance();
+        const isOnline = networkService.isOnline();
+        
+        if (!isOnline) {
+          // Offline: still close the form since the event was cached
+          setShowEventForm(false);
+          setEditingEvent(null);
+          setSelectedCalendar(null);
+          setInitialDate(undefined);
+          
+          errorService.reportError(
+            `Event ${editingEvent ? 'updated' : 'created'} offline. Changes will sync when connection is restored.`,
+            "info"
+          );
+        } else {
+          // Online but failed: report error and keep form open
+          errorService.reportError(
+            `Failed to save event: ${errorService.formatErrorMessage(error)}`,
+            "error"
+          );
+          throw error; // Re-throw to let the form handle the error display
+        }
       } finally {
         hideLoading();
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editingEvent, sync, currentDateRange, loadEvents, errorService]
+    [editingEvent, sync, currentDateRange, loadEvents, errorService, calendars]
   );
 
   const handleEventDelete = useCallback(
     async (event: CalendarEvent, calendar: Calendar) => {
       try {
-        showLoading("Deleting event...");
+        const networkService = NetworkService.getInstance();
+        const isOnline = networkService.isOnline();
+        
+        showLoading(isOnline ? "Deleting event..." : "Deleting event (offline)...");
 
         await sync.deleteEvent(calendar, event);
 
-        // Refresh events after successful delete
+        // Refresh events after delete (this will show the updated cache)
         if (currentDateRange) {
           await loadEvents(currentDateRange);
+        }
+
+        // Show success message based on online status
+        if (!isOnline) {
+          errorService.reportError(
+            "Event deleted offline. Changes will sync when connection is restored.",
+            "info"
+          );
         }
 
         // Close form
@@ -568,14 +663,29 @@ const AppContent: React.FC = () => {
       } catch (error) {
         console.error("Error deleting event:", error);
 
-        // Report error but don't throw it
-        errorService.reportError(
-          `Failed to delete event: ${errorService.formatErrorMessage(error)}`,
-          "error"
-        );
-
-        // Don't close the form so the user can try again
-        throw error; // Re-throw to let the form handle the error display
+        // For offline operations, we don't treat them as errors since they're cached
+        const networkService = NetworkService.getInstance();
+        const isOnline = networkService.isOnline();
+        
+        if (!isOnline) {
+          // Offline: still close the form since the event was removed from cache
+          setShowEventForm(false);
+          setEditingEvent(null);
+          setSelectedCalendar(null);
+          setInitialDate(undefined);
+          
+          errorService.reportError(
+            "Event deleted offline. Changes will sync when connection is restored.",
+            "info"
+          );
+        } else {
+          // Online but failed: report error and keep form open
+          errorService.reportError(
+            `Failed to delete event: ${errorService.formatErrorMessage(error)}`,
+            "error"
+          );
+          throw error; // Re-throw to let the form handle the error display
+        }
       } finally {
         hideLoading();
       }
@@ -802,6 +912,17 @@ const AppContent: React.FC = () => {
 
   // Handle manual sync
   const handleManualSync = async () => {
+    const networkService = NetworkService.getInstance();
+    const isOnline = networkService.isOnline();
+
+    if (!isOnline) {
+      errorService.reportError(
+        "Cannot sync while offline. Please check your internet connection.",
+        "warning"
+      );
+      return;
+    }
+
     try {
       showLoading("Syncing data...");
       await sync.fullSync({ forceRefresh: true });
@@ -843,6 +964,10 @@ const AppContent: React.FC = () => {
       }
     } catch (error) {
       console.error("Manual sync failed:", error);
+      errorService.reportError(
+        `Sync failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
     } finally {
       hideLoading();
     }

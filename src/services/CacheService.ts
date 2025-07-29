@@ -48,6 +48,20 @@ export class CacheService {
   private static readonly MAX_CACHE_AGE = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
   /**
+   * Ensures that date properties in an event are proper Date objects
+   * This is needed because cached events may have dates serialized as strings
+   */
+  private static ensureEventDates(event: CalendarEvent): CalendarEvent {
+    return {
+      ...event,
+      dtstart: typeof event.dtstart === 'string' ? new Date(event.dtstart) : event.dtstart,
+      dtend: typeof event.dtend === 'string' ? new Date(event.dtend) : event.dtend,
+      created: event.created ? (typeof event.created === 'string' ? new Date(event.created) : event.created) : undefined,
+      lastModified: event.lastModified ? (typeof event.lastModified === 'string' ? new Date(event.lastModified) : event.lastModified) : undefined,
+    };
+  }
+
+  /**
    * Stores cached data in local storage
    */
   static storeCacheData(data: CacheData): void {
@@ -117,7 +131,13 @@ export class CacheService {
       return null;
     }
 
-    return cachedEvents;
+    // Ensure date properties are properly converted back to Date objects
+    const eventsWithDates = cachedEvents.events.map(event => this.ensureEventDates(event));
+
+    return {
+      ...cachedEvents,
+      events: eventsWithDates
+    };
   }
 
   /**

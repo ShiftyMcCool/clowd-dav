@@ -7,6 +7,8 @@ export interface CalendarEvent {
   location?: string;
   etag?: string;
   calendarUrl?: string; // Track which calendar this event belongs to
+  created?: Date;
+  lastModified?: Date;
 }
 
 export interface Contact {

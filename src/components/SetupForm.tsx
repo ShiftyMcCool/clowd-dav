@@ -195,6 +195,7 @@ export const SetupForm: React.FC<SetupFormProps> = ({
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const loadStoredCredentials = async () => {
     if (!formData.masterPassword) {
       setValidationErrors([

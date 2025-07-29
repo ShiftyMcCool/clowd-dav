@@ -33,6 +33,20 @@ export class SyncService {
   }
 
   /**
+   * Ensures that date properties in an event are proper Date objects
+   * This is needed because cached events may have dates serialized as strings
+   */
+  private ensureEventDates(event: CalendarEvent): CalendarEvent {
+    return {
+      ...event,
+      dtstart: typeof event.dtstart === 'string' ? new Date(event.dtstart) : event.dtstart,
+      dtend: typeof event.dtend === 'string' ? new Date(event.dtend) : event.dtend,
+      created: event.created ? (typeof event.created === 'string' ? new Date(event.created) : event.created) : undefined,
+      lastModified: event.lastModified ? (typeof event.lastModified === 'string' ? new Date(event.lastModified) : event.lastModified) : undefined,
+    };
+  }
+
+  /**
    * Performs a full synchronization of calendars, events, and contacts
    */
   async fullSync(options: SyncOptions = {}): Promise<SyncResult> {
@@ -204,20 +218,25 @@ export class SyncService {
    * Creates an event with offline support
    */
   async createEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
-    // Ensure the event has the correct calendar URL
-    const eventWithCalendar = { ...event, calendarUrl: calendar.url };
+    // Ensure the event has the correct calendar URL and a UID if missing
+    const eventWithCalendar = { 
+      ...event, 
+      calendarUrl: calendar.url,
+      uid: event.uid || `offline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    };
+    
+    // Always update cache optimistically first (for immediate UI feedback)
+    const cachedEvents = CacheService.getCachedEvents(calendar.url);
+    const eventsArray = cachedEvents ? [...cachedEvents.events] : [];
+    eventsArray.push(eventWithCalendar);
+    CacheService.storeCachedEvents(calendar.url, eventsArray, cachedEvents?.etag);
     
     if (navigator.onLine) {
       try {
         await this.davClient.createEvent(calendar, eventWithCalendar);
-        
-        // Update cache immediately
-        const cachedEvents = CacheService.getCachedEvents(calendar.url);
-        if (cachedEvents) {
-          cachedEvents.events.push(eventWithCalendar);
-          CacheService.storeCachedEvents(calendar.url, cachedEvents.events, cachedEvents.etag);
-        }
+        console.log('Event created successfully on server');
       } catch (error) {
+        console.warn('Failed to create event on server, adding to pending operations:', error);
         // If online but failed, add to pending operations
         CacheService.addPendingOperation({
           type: 'create',
@@ -225,22 +244,17 @@ export class SyncService {
           resourceUrl: calendar.url,
           data: eventWithCalendar
         });
-        throw error;
+        // Don't throw error since we've cached it optimistically
       }
     } else {
-      // Offline: add to pending operations and update cache optimistically
+      console.log('Offline: adding event to pending operations');
+      // Offline: add to pending operations
       CacheService.addPendingOperation({
         type: 'create',
         resourceType: 'event',
         resourceUrl: calendar.url,
         data: eventWithCalendar
       });
-
-      const cachedEvents = CacheService.getCachedEvents(calendar.url);
-      if (cachedEvents) {
-        cachedEvents.events.push(eventWithCalendar);
-        CacheService.storeCachedEvents(calendar.url, cachedEvents.events, cachedEvents.etag);
-      }
     }
   }
 
@@ -251,20 +265,23 @@ export class SyncService {
     // Ensure the event has the correct calendar URL
     const eventWithCalendar = { ...event, calendarUrl: calendar.url };
     
+    // Always update cache optimistically first (for immediate UI feedback)
+    const cachedEvents = CacheService.getCachedEvents(calendar.url);
+    if (cachedEvents) {
+      const eventsArray = [...cachedEvents.events];
+      const index = eventsArray.findIndex(e => e.uid === event.uid);
+      if (index !== -1) {
+        eventsArray[index] = eventWithCalendar;
+        CacheService.storeCachedEvents(calendar.url, eventsArray, cachedEvents.etag);
+      }
+    }
+    
     if (navigator.onLine) {
       try {
         await this.davClient.updateEvent(calendar, eventWithCalendar);
-        
-        // Update cache immediately
-        const cachedEvents = CacheService.getCachedEvents(calendar.url);
-        if (cachedEvents) {
-          const index = cachedEvents.events.findIndex(e => e.uid === event.uid);
-          if (index !== -1) {
-            cachedEvents.events[index] = eventWithCalendar;
-            CacheService.storeCachedEvents(calendar.url, cachedEvents.events, cachedEvents.etag);
-          }
-        }
+        console.log('Event updated successfully on server');
       } catch (error) {
+        console.warn('Failed to update event on server, adding to pending operations:', error);
         // If online but failed, add to pending operations
         CacheService.addPendingOperation({
           type: 'update',
@@ -272,25 +289,17 @@ export class SyncService {
           resourceUrl: calendar.url,
           data: eventWithCalendar
         });
-        throw error;
+        // Don't throw error since we've cached it optimistically
       }
     } else {
-      // Offline: add to pending operations and update cache optimistically
+      console.log('Offline: adding event update to pending operations');
+      // Offline: add to pending operations
       CacheService.addPendingOperation({
         type: 'update',
         resourceType: 'event',
         resourceUrl: calendar.url,
         data: eventWithCalendar
       });
-
-      const cachedEvents = CacheService.getCachedEvents(calendar.url);
-      if (cachedEvents) {
-        const index = cachedEvents.events.findIndex(e => e.uid === event.uid);
-        if (index !== -1) {
-          cachedEvents.events[index] = eventWithCalendar;
-          CacheService.storeCachedEvents(calendar.url, cachedEvents.events, cachedEvents.etag);
-        }
-      }
     }
   }
 
@@ -298,17 +307,19 @@ export class SyncService {
    * Deletes an event with offline support
    */
   async deleteEvent(calendar: Calendar, event: CalendarEvent): Promise<void> {
+    // Always remove from cache optimistically first (for immediate UI feedback)
+    const cachedEvents = CacheService.getCachedEvents(calendar.url);
+    if (cachedEvents) {
+      const filteredEvents = cachedEvents.events.filter(e => e.uid !== event.uid);
+      CacheService.storeCachedEvents(calendar.url, filteredEvents, cachedEvents.etag);
+    }
+    
     if (navigator.onLine) {
       try {
         await this.davClient.deleteEvent(calendar, event);
-        
-        // Remove from cache immediately
-        const cachedEvents = CacheService.getCachedEvents(calendar.url);
-        if (cachedEvents) {
-          const filteredEvents = cachedEvents.events.filter(e => e.uid !== event.uid);
-          CacheService.storeCachedEvents(calendar.url, filteredEvents, cachedEvents.etag);
-        }
+        console.log('Event deleted successfully on server');
       } catch (error) {
+        console.warn('Failed to delete event on server, adding to pending operations:', error);
         // If online but failed, add to pending operations
         CacheService.addPendingOperation({
           type: 'delete',
@@ -316,22 +327,17 @@ export class SyncService {
           resourceUrl: calendar.url,
           data: event
         });
-        throw error;
+        // Don't throw error since we've removed it from cache optimistically
       }
     } else {
-      // Offline: add to pending operations and update cache optimistically
+      console.log('Offline: adding event deletion to pending operations');
+      // Offline: add to pending operations
       CacheService.addPendingOperation({
         type: 'delete',
         resourceType: 'event',
         resourceUrl: calendar.url,
         data: event
       });
-
-      const cachedEvents = CacheService.getCachedEvents(calendar.url);
-      if (cachedEvents) {
-        const filteredEvents = cachedEvents.events.filter(e => e.uid !== event.uid);
-        CacheService.storeCachedEvents(calendar.url, filteredEvents, cachedEvents.etag);
-      }
     }
   }
 
@@ -559,7 +565,10 @@ export class SyncService {
     const { type, resourceType, resourceUrl, data } = operation;
 
     if (resourceType === 'event') {
-      const event = data as CalendarEvent;
+      const rawEvent = data as CalendarEvent;
+      // Ensure date properties are proper Date objects (they might be strings after serialization)
+      const event = this.ensureEventDates(rawEvent);
+      
       const calendar: Calendar = { url: resourceUrl, displayName: '' };
 
       switch (type) {
