@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Modal } from '../common/Modal';
-import { ColorSelector } from '../common/ColorSelector';
+import { Modal, ColorPicker } from '../common';
 import './NewCalendarForm.css';
 
 interface NewCalendarFormProps {
@@ -17,7 +16,6 @@ export const NewCalendarForm: React.FC<NewCalendarFormProps> = ({
   const [color, setColor] = useState('#3b82f6');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showColorSelector, setShowColorSelector] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +40,6 @@ export const NewCalendarForm: React.FC<NewCalendarFormProps> = ({
 
   const handleColorChange = (newColor: string) => {
     setColor(newColor);
-    setShowColorSelector(false);
   };
 
   return (
@@ -97,16 +94,11 @@ export const NewCalendarForm: React.FC<NewCalendarFormProps> = ({
             <label className="form-label">
               Color
             </label>
-            <button
-              type="button"
-              className="color-picker-button"
-              onClick={() => setShowColorSelector(true)}
-              disabled={isSubmitting}
-              style={{ backgroundColor: color }}
-              title="Choose calendar color"
-            >
-              <span className="color-picker-text">Choose Color</span>
-            </button>
+            <ColorPicker
+              currentColor={color}
+              onColorChange={handleColorChange}
+              className="calendar-color-picker"
+            />
           </div>
 
           <div className="form-actions">
@@ -128,14 +120,6 @@ export const NewCalendarForm: React.FC<NewCalendarFormProps> = ({
           </div>
         </form>
       </Modal>
-
-      {showColorSelector && (
-        <ColorSelector
-          currentColor={color}
-          onColorChange={handleColorChange}
-          onClose={() => setShowColorSelector(false)}
-        />
-      )}
     </>
   );
 };
