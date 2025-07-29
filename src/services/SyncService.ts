@@ -540,6 +540,35 @@ export class SyncService {
   }
 
   /**
+   * Creates a new calendar with offline support
+   */
+  async createCalendar(
+    displayName: string,
+    color?: string,
+    description?: string
+  ): Promise<Calendar> {
+    if (navigator.onLine) {
+      try {
+        // Create calendar on server
+        const newCalendar = await this.davClient.createCalendar(displayName, color, description);
+        
+        // Update cache immediately
+        const cachedCalendars = CacheService.getCachedCalendars();
+        const updatedCalendars = [...cachedCalendars, newCalendar];
+        CacheService.storeCachedCalendars(updatedCalendars);
+        
+        console.log('Calendar created successfully on server');
+        return newCalendar;
+      } catch (error) {
+        console.error('Failed to create calendar on server:', error);
+        throw error; // Don't cache calendar creation failures
+      }
+    } else {
+      throw new Error('Calendar creation requires an internet connection');
+    }
+  }
+
+  /**
    * Updates calendar color with server sync and offline support
    */
   async updateCalendarColor(calendar: Calendar, color: string): Promise<void> {

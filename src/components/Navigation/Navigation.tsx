@@ -19,6 +19,7 @@ interface NavigationProps {
   visibleCalendars?: Set<string>;
   onCalendarToggle?: (calendarUrl: string) => void;
   onCalendarColorChange?: (calendarUrl: string, color: string) => void;
+  onCreateCalendar?: () => void;
   // Address book-specific props
   addressBooks?: AddressBook[];
   visibleAddressBooks?: Set<string>;
@@ -36,6 +37,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   visibleCalendars = new Set(),
   onCalendarToggle,
   onCalendarColorChange,
+  onCreateCalendar,
   addressBooks = [],
   visibleAddressBooks = new Set(),
   onAddressBookToggle,
@@ -214,8 +216,8 @@ export const Navigation: React.FC<NavigationProps> = ({
                 
                 {sidebarOpen && currentView === "calendar" && expandedSections.has("calendar") && (
                   <div className="nav-section-content">
-                    {calendars.length > 1 && (
-                      <div className="calendar-controls">
+                    <div className="calendar-controls">
+                      {calendars.length > 1 && (
                         <button
                           className="calendar-toggle-all"
                           onClick={handleCalendarToggleAll}
@@ -230,8 +232,16 @@ export const Navigation: React.FC<NavigationProps> = ({
                           }`}></span>
                           {calendars.every(cal => visibleCalendars.has(cal.url)) ? 'Hide All' : 'Show All'}
                         </button>
-                      </div>
-                    )}
+                      )}
+                      <button
+                        className="calendar-add-button"
+                        onClick={onCreateCalendar}
+                        title="Create new calendar"
+                      >
+                        <span className="add-icon">+</span>
+                        New Calendar
+                      </button>
+                    </div>
 
                     <div className="calendar-list">
                       {calendars.map(calendar => (

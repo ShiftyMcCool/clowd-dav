@@ -57,6 +57,11 @@ const EventForm = lazy(() =>
     default: module.EventForm,
   }))
 );
+const NewCalendarForm = lazy(() =>
+  import("./components/Calendar/NewCalendarForm").then((module) => ({
+    default: module.NewCalendarForm,
+  }))
+);
 
 // Protected route component
 const ProtectedRoute: React.FC<{
@@ -83,6 +88,7 @@ const NavigationWrapper: React.FC<{
   visibleCalendars: Set<string>;
   onCalendarToggle: (calendarUrl: string) => void;
   onCalendarColorChange: (calendarUrl: string, color: string) => void;
+  onCreateCalendar: () => void;
   addressBooks: AddressBook[];
   visibleAddressBooks: Set<string>;
   onAddressBookToggle: (addressBookUrl: string) => void;
@@ -96,6 +102,7 @@ const NavigationWrapper: React.FC<{
   visibleCalendars,
   onCalendarToggle,
   onCalendarColorChange,
+  onCreateCalendar,
   addressBooks,
   visibleAddressBooks,
   onAddressBookToggle,
@@ -118,6 +125,7 @@ const NavigationWrapper: React.FC<{
       visibleCalendars={visibleCalendars}
       onCalendarToggle={onCalendarToggle}
       onCalendarColorChange={onCalendarColorChange}
+      onCreateCalendar={onCreateCalendar}
       addressBooks={addressBooks}
       visibleAddressBooks={visibleAddressBooks}
       onAddressBookToggle={onAddressBookToggle}
@@ -141,6 +149,7 @@ const AppContent: React.FC = () => {
   const [selectedCalendar, setSelectedCalendar] = useState<Calendar | null>(
     null
   );
+  const [showNewCalendarForm, setShowNewCalendarForm] = useState(false);
   const [currentDateRange, setCurrentDateRange] = useState<DateRange | null>(
     null
   );
@@ -704,6 +713,54 @@ const AppContent: React.FC = () => {
     setInitialDate(undefined);
   };
 
+  const handleCreateCalendar = useCallback(() => {
+    setShowNewCalendarForm(true);
+  }, []);
+
+  const handleNewCalendarSave = useCallback(async (
+    displayName: string,
+    color: string,
+    description?: string
+  ) => {
+    try {
+      showLoading("Creating calendar...");
+      
+      // Create calendar using sync service
+      const newCalendar = await sync.createCalendar(displayName, color, description);
+      
+      // Update calendars state
+      setCalendars((prevCalendars) => {
+        const updatedCalendars = [...prevCalendars, newCalendar];
+        return assignDefaultColorsIfMissing(updatedCalendars);
+      });
+      
+      // Make the new calendar visible by default
+      setVisibleCalendars((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(newCalendar.url);
+        return newSet;
+      });
+      
+      // Close the form
+      setShowNewCalendarForm(false);
+      
+      // Show success message
+      errorService.reportError(
+        `Calendar "${displayName}" created successfully!`,
+        "info"
+      );
+    } catch (error) {
+      console.error('Failed to create calendar:', error);
+      throw error; // Re-throw to let the form handle the error display
+    } finally {
+      hideLoading();
+    }
+  }, [sync, errorService, showLoading, hideLoading]);
+
+  const handleNewCalendarCancel = useCallback(() => {
+    setShowNewCalendarForm(false);
+  }, []);
+
   // Load address books using sync service
   const loadAddressBooks = async () => {
     try {
@@ -817,6 +874,16 @@ const AppContent: React.FC = () => {
                 />
               </Suspense>
             )}
+
+            {/* New Calendar Form Modal */}
+            {showNewCalendarForm && (
+              <Suspense fallback={<div />}>
+                <NewCalendarForm
+                  onSave={handleNewCalendarSave}
+                  onCancel={handleNewCalendarCancel}
+                />
+              </Suspense>
+            )}
           </div>
         </Suspense>
       );
@@ -834,9 +901,12 @@ const AppContent: React.FC = () => {
     handleEventClick,
     handleEventSave,
     handleEventDelete,
+    handleNewCalendarSave,
+    handleNewCalendarCancel,
     initialDate,
     selectedCalendar,
     showEventForm,
+    showNewCalendarForm,
   ]);
 
   // Contacts component
@@ -910,6 +980,8 @@ const AppContent: React.FC = () => {
       );
     }
   }, [calendars, sync, errorService]);
+
+
 
   // Update current view based on location
   const location = useLocation();
@@ -1018,6 +1090,7 @@ const AppContent: React.FC = () => {
           visibleCalendars={visibleCalendars}
           onCalendarToggle={handleCalendarToggle}
           onCalendarColorChange={handleCalendarColorChange}
+          onCreateCalendar={handleCreateCalendar}
           addressBooks={addressBooks}
           visibleAddressBooks={visibleAddressBooks}
           onAddressBookToggle={handleAddressBookToggle}

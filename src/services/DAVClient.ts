@@ -705,6 +705,179 @@ export class DAVClient implements IDAVClient {
   }
 
   /**
+   * Create a new calendar using MKCALENDAR request
+   * Implements CalDAV calendar creation protocol
+   */
+  public async createCalendar(
+    displayName: string,
+    color?: string,
+    description?: string
+  ): Promise<Calendar> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before creating calendars."
+      );
+    }
+
+    if (!this.provider) {
+      throw new Error(
+        "Provider not set. Please set a provider before creating calendars."
+      );
+    }
+
+    // Generate unique calendar URL
+    const baseUrl = this.authConfig.caldavUrl.replace(/\/$/, "");
+    const discoveryPath = this.provider.getCalendarDiscoveryPath();
+    const username = this.authConfig.username;
+    
+    // Generate a unique calendar ID based on display name
+    const calendarId = displayName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') + '-' + Date.now();
+
+    let calendarUrl: string;
+    if (baseUrl.includes(discoveryPath.replace(/\/$/, ""))) {
+      if (baseUrl.endsWith(`/${username}`)) {
+        calendarUrl = `${baseUrl}/${calendarId}/`;
+      } else {
+        calendarUrl = `${baseUrl}/${username}/${calendarId}/`;
+      }
+    } else {
+      calendarUrl = `${baseUrl}${discoveryPath}${username}/${calendarId}/`;
+    }
+
+    // Convert to relative URL for proxy in development
+    const requestUrl = this.convertToProxyUrl(calendarUrl);
+
+    // MKCALENDAR request body
+    const mkcalendarBody = `<?xml version="1.0" encoding="utf-8" ?>
+<C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/">
+  <D:set>
+    <D:prop>
+      <D:displayname>${displayName}</D:displayname>
+      ${description ? `<C:calendar-description>${description}</C:calendar-description>` : ''}
+      ${color ? `<A:calendar-color>${color}</A:calendar-color>` : ''}
+      <C:supported-calendar-component-set>
+        <C:comp name="VEVENT"/>
+        <C:comp name="VTODO"/>
+      </C:supported-calendar-component-set>
+    </D:prop>
+  </D:set>
+</C:mkcalendar>`;
+
+    try {
+      // MKCALENDAR request to create the calendar
+      const response = await this.makeRequest(requestUrl, {
+        method: "MKCALENDAR",
+        body: mkcalendarBody,
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+        },
+      });
+
+      // Check if creation was successful (201 Created)
+      if (response.status !== 201) {
+        throw new Error(`Calendar creation failed with status ${response.status}`);
+      }
+
+      // Return the created calendar object
+      const serverBaseUrl = new URL(this.authConfig.caldavUrl).origin;
+      return {
+        url: `${serverBaseUrl}${calendarUrl.replace(serverBaseUrl, '')}`,
+        displayName,
+        color: color || '#3b82f6',
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Calendar creation failed: ${error.message}`);
+        }
+        throw new Error(`Calendar creation failed: ${error.message}`);
+      }
+      throw new Error("Calendar creation failed: Unknown error");
+    }
+  }
+
+  /**
+   * Update calendar properties using PROPPATCH request
+   * Implements CalDAV calendar property update protocol
+   */
+  public async updateCalendarProperties(
+    calendar: Calendar,
+    properties: { displayName?: string; color?: string; description?: string }
+  ): Promise<void> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before updating calendar properties."
+      );
+    }
+
+    // Convert to relative URL for proxy in development
+    const requestUrl = this.convertToProxyUrl(calendar.url);
+
+    // Build PROPPATCH request body
+    let propsToSet = '';
+    if (properties.displayName) {
+      propsToSet += `<D:displayname>${properties.displayName}</D:displayname>`;
+    }
+    if (properties.color) {
+      propsToSet += `<A:calendar-color>${properties.color}</A:calendar-color>`;
+    }
+    if (properties.description) {
+      propsToSet += `<C:calendar-description>${properties.description}</C:calendar-description>`;
+    }
+
+    const proppatchBody = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/">
+  <D:set>
+    <D:prop>
+      ${propsToSet}
+    </D:prop>
+  </D:set>
+</D:propertyupdate>`;
+
+    try {
+      // PROPPATCH request to update calendar properties
+      const response = await this.makeRequest(requestUrl, {
+        method: "PROPPATCH",
+        body: proppatchBody,
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+        },
+      });
+
+      // Check if update was successful (207 Multi-Status is typical for PROPPATCH)
+      if (response.status !== 207 && response.status !== 200) {
+        throw new Error(`Calendar property update failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Calendar property update failed: ${error.message}`);
+        }
+        throw new Error(`Calendar property update failed: ${error.message}`);
+      }
+      throw new Error("Calendar property update failed: Unknown error");
+    }
+  }
+
+  /**
    * Create a new contact using PUT request with vCard data
    * Implements CardDAV contact creation protocol
    */
@@ -1483,75 +1656,7 @@ export class DAVClient implements IDAVClient {
     }
   }
 
-  /**
-   * Update calendar properties (like color) using PROPPATCH request
-   * Implements CalDAV property modification protocol
-   */
-  public async updateCalendarProperties(
-    calendar: Calendar,
-    properties: { color?: string; displayName?: string }
-  ): Promise<void> {
-    if (!this.authConfig) {
-      throw new Error(
-        "Authentication not configured. Please set auth config before updating calendar properties."
-      );
-    }
 
-    // Build PROPPATCH request body
-    let proppatchBody = `<?xml version="1.0" encoding="utf-8" ?>
-<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/">
-  <D:set>
-    <D:prop>`;
-
-    if (properties.color !== undefined) {
-      // Use Apple namespace for calendar color as it's more widely supported
-      proppatchBody += `
-      <A:calendar-color>${properties.color}</A:calendar-color>`;
-    }
-
-    if (properties.displayName !== undefined) {
-      proppatchBody += `
-      <D:displayname>${this.escapeXmlValue(properties.displayName)}</D:displayname>`;
-    }
-
-    proppatchBody += `
-    </D:prop>
-  </D:set>
-</D:propertyupdate>`;
-
-    try {
-      const response = await this.makeRequest(calendar.url, {
-        method: "PROPPATCH",
-        body: proppatchBody,
-        headers: {
-          "Content-Type": "application/xml; charset=utf-8",
-        },
-      });
-
-      // Check if update was successful (207 Multi-Status is typical for PROPPATCH)
-      if (response.status !== 207 && response.status !== 200 && response.status !== 204) {
-        throw new Error(`Calendar property update failed with status ${response.status}`);
-      }
-
-      // Parse the response to check for individual property update status
-      this.validateProppatchResponse(response.data);
-    } catch (error) {
-      if (error instanceof Error) {
-        // If it's a network/HTTP error, wrap it with context
-        if (
-          error.message.includes("Authentication failed") ||
-          error.message.includes("Access forbidden") ||
-          error.message.includes("Resource not found") ||
-          error.message.includes("Server error") ||
-          error.message.includes("Network error")
-        ) {
-          throw new Error(`Calendar property update failed: ${error.message}`);
-        }
-        throw new Error(`Calendar property update failed: ${error.message}`);
-      }
-      throw new Error("Calendar property update failed: Unknown error");
-    }
-  }
 
   /**
    * Validate PROPPATCH response to ensure properties were updated successfully
