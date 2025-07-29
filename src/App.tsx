@@ -37,7 +37,7 @@ import {
 } from "./services/ErrorHandlingService";
 import { useSync } from "./hooks/useSync";
 import { ContactCardGrid } from "./components/Contact";
-import { assignDefaultColors } from "./utils/calendarColors";
+import { assignDefaultColorsIfMissing } from "./utils/calendarColors";
 import "./styles/themes.css";
 import "./App.css";
 
@@ -82,6 +82,7 @@ const NavigationWrapper: React.FC<{
   calendars: Calendar[];
   visibleCalendars: Set<string>;
   onCalendarToggle: (calendarUrl: string) => void;
+  onCalendarColorChange: (calendarUrl: string, color: string) => void;
   addressBooks: AddressBook[];
   visibleAddressBooks: Set<string>;
   onAddressBookToggle: (addressBookUrl: string) => void;
@@ -94,6 +95,7 @@ const NavigationWrapper: React.FC<{
   calendars,
   visibleCalendars,
   onCalendarToggle,
+  onCalendarColorChange,
   addressBooks,
   visibleAddressBooks,
   onAddressBookToggle,
@@ -115,6 +117,7 @@ const NavigationWrapper: React.FC<{
       calendars={calendars}
       visibleCalendars={visibleCalendars}
       onCalendarToggle={onCalendarToggle}
+      onCalendarColorChange={onCalendarColorChange}
       addressBooks={addressBooks}
       visibleAddressBooks={visibleAddressBooks}
       onAddressBookToggle={onAddressBookToggle}
@@ -202,7 +205,7 @@ const AppContent: React.FC = () => {
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
 
       console.log("Setting calendars from cache:", cachedCalendars.length);
-      const calendarsWithColors = assignDefaultColors(cachedCalendars);
+      const calendarsWithColors = assignDefaultColorsIfMissing(cachedCalendars);
       setCalendars(calendarsWithColors);
 
       // Initialize all calendars as visible by default
@@ -226,7 +229,7 @@ const AppContent: React.FC = () => {
           const freshAddressBooks = CacheService.getCachedAddressBooks();
           
           if (freshCalendars.length !== cachedCalendars.length) {
-            const freshCalendarsWithColors = assignDefaultColors(freshCalendars);
+            const freshCalendarsWithColors = assignDefaultColorsIfMissing(freshCalendars);
             setCalendars(freshCalendarsWithColors);
             setVisibleCalendars(new Set(freshCalendarsWithColors.map((cal) => cal.url)));
           }
@@ -879,6 +882,35 @@ const AppContent: React.FC = () => {
     });
   }, []);
 
+  const handleCalendarColorChange = useCallback(async (calendarUrl: string, color: string) => {
+    // Find the calendar to update
+    const calendar = calendars.find(cal => cal.url === calendarUrl);
+    if (!calendar) {
+      console.error('Calendar not found for color update:', calendarUrl);
+      return;
+    }
+
+    try {
+      // Update color on server and in cache
+      await sync.updateCalendarColor(calendar, color);
+      
+      // Update the calendar in state (this should already be done by the sync service optimistically)
+      setCalendars((prevCalendars) => 
+        prevCalendars.map((cal) => 
+          cal.url === calendarUrl 
+            ? { ...cal, color }
+            : cal
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update calendar color:', error);
+      errorService.reportError(
+        `Failed to update calendar color: ${errorService.formatErrorMessage(error)}`,
+        "error"
+      );
+    }
+  }, [calendars, sync, errorService]);
+
   // Update current view based on location
   const location = useLocation();
   useEffect(() => {
@@ -931,7 +963,7 @@ const AppContent: React.FC = () => {
       const cachedCalendars = CacheService.getCachedCalendars();
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
 
-      const calendarsWithColors = assignDefaultColors(cachedCalendars);
+      const calendarsWithColors = assignDefaultColorsIfMissing(cachedCalendars);
       setCalendars(calendarsWithColors);
 
       // Update visible calendars to include any new calendars
@@ -985,6 +1017,7 @@ const AppContent: React.FC = () => {
           calendars={calendars}
           visibleCalendars={visibleCalendars}
           onCalendarToggle={handleCalendarToggle}
+          onCalendarColorChange={handleCalendarColorChange}
           addressBooks={addressBooks}
           visibleAddressBooks={visibleAddressBooks}
           onAddressBookToggle={handleAddressBookToggle}

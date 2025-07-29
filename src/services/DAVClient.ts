@@ -274,12 +274,13 @@ export class DAVClient implements IDAVClient {
 
     // PROPFIND request body to discover calendar collections
     const propfindBody = `<?xml version="1.0" encoding="utf-8" ?>
-<D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+<D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/">
   <D:prop>
     <D:displayname />
     <D:resourcetype />
     <C:calendar-description />
     <C:calendar-color />
+    <A:calendar-color />
     <C:supported-calendar-component-set />
   </D:prop>
 </D:propfind>`;
@@ -947,11 +948,32 @@ export class DAVClient implements IDAVClient {
         const displayName =
           displayNameElement?.textContent?.trim() || "Unnamed Calendar";
 
-        // Get calendar color if available
-        const colorElement = response.getElementsByTagNameNS(
+        // Get calendar color if available - try multiple namespaces
+        let colorElement = response.getElementsByTagNameNS(
           "urn:ietf:params:xml:ns:caldav",
           "calendar-color"
         )[0];
+        
+        // Try alternative namespaces if not found
+        if (!colorElement) {
+          colorElement = response.getElementsByTagNameNS(
+            "http://apple.com/ns/ical/",
+            "calendar-color"
+          )[0];
+        }
+        
+        // Try without namespace (some servers don't use proper namespaces)
+        if (!colorElement) {
+          const allElements = response.getElementsByTagName("*");
+          for (let j = 0; j < allElements.length; j++) {
+            const element = allElements[j];
+            if (element.localName === "calendar-color" || element.tagName.endsWith(":calendar-color")) {
+              colorElement = element;
+              break;
+            }
+          }
+        }
+        
         const color = colorElement?.textContent?.trim();
 
         // Build full URL
@@ -1459,6 +1481,120 @@ export class DAVClient implements IDAVClient {
         }`
       );
     }
+  }
+
+  /**
+   * Update calendar properties (like color) using PROPPATCH request
+   * Implements CalDAV property modification protocol
+   */
+  public async updateCalendarProperties(
+    calendar: Calendar,
+    properties: { color?: string; displayName?: string }
+  ): Promise<void> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before updating calendar properties."
+      );
+    }
+
+    // Build PROPPATCH request body
+    let proppatchBody = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propertyupdate xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:A="http://apple.com/ns/ical/">
+  <D:set>
+    <D:prop>`;
+
+    if (properties.color !== undefined) {
+      // Use Apple namespace for calendar color as it's more widely supported
+      proppatchBody += `
+      <A:calendar-color>${properties.color}</A:calendar-color>`;
+    }
+
+    if (properties.displayName !== undefined) {
+      proppatchBody += `
+      <D:displayname>${this.escapeXmlValue(properties.displayName)}</D:displayname>`;
+    }
+
+    proppatchBody += `
+    </D:prop>
+  </D:set>
+</D:propertyupdate>`;
+
+    try {
+      const response = await this.makeRequest(calendar.url, {
+        method: "PROPPATCH",
+        body: proppatchBody,
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+        },
+      });
+
+      // Check if update was successful (207 Multi-Status is typical for PROPPATCH)
+      if (response.status !== 207 && response.status !== 200 && response.status !== 204) {
+        throw new Error(`Calendar property update failed with status ${response.status}`);
+      }
+
+      // Parse the response to check for individual property update status
+      this.validateProppatchResponse(response.data);
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Calendar property update failed: ${error.message}`);
+        }
+        throw new Error(`Calendar property update failed: ${error.message}`);
+      }
+      throw new Error("Calendar property update failed: Unknown error");
+    }
+  }
+
+  /**
+   * Validate PROPPATCH response to ensure properties were updated successfully
+   */
+  private validateProppatchResponse(xmlData: string): void {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+
+      // Find all propstat elements
+      const propstats = xmlDoc.getElementsByTagNameNS("DAV:", "propstat");
+
+      for (let i = 0; i < propstats.length; i++) {
+        const propstat = propstats[i];
+        const statusElement = propstat.getElementsByTagNameNS("DAV:", "status")[0];
+        
+        if (statusElement) {
+          const status = statusElement.textContent?.trim();
+          // Check if status indicates success (2xx status codes)
+          if (status && !status.includes("200") && !status.includes("204")) {
+            throw new Error(`Property update failed with status: ${status}`);
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Property update failed")) {
+        throw error;
+      }
+      // If we can't parse the response, assume success (some servers don't return detailed responses)
+      console.warn("Could not parse PROPPATCH response, assuming success");
+    }
+  }
+
+  /**
+   * Escape special characters in XML values
+   */
+  private escapeXmlValue(value: string): string {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   /**

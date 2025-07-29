@@ -540,6 +540,47 @@ export class SyncService {
   }
 
   /**
+   * Updates calendar color with server sync and offline support
+   */
+  async updateCalendarColor(calendar: Calendar, color: string): Promise<void> {
+    // Update the calendar object
+    const updatedCalendar = { ...calendar, color };
+    
+    // Always update cache optimistically first (for immediate UI feedback)
+    const cachedCalendars = CacheService.getCachedCalendars();
+    const updatedCalendars = cachedCalendars.map(cal => 
+      cal.url === calendar.url ? updatedCalendar : cal
+    );
+    CacheService.storeCachedCalendars(updatedCalendars);
+    
+    if (navigator.onLine) {
+      try {
+        await this.davClient.updateCalendarProperties(calendar, { color });
+        console.log('Calendar color updated successfully on server');
+      } catch (error) {
+        console.warn('Failed to update calendar color on server, will retry when online:', error);
+        // If online but failed, add to pending operations
+        CacheService.addPendingOperation({
+          type: 'update',
+          resourceType: 'calendar' as any, // We'll need to extend the type
+          resourceUrl: calendar.url,
+          data: { ...calendar, color } as any
+        });
+        // Don't throw error since we've cached it optimistically
+      }
+    } else {
+      console.log('Offline: adding calendar color update to pending operations');
+      // Offline: add to pending operations
+      CacheService.addPendingOperation({
+        type: 'update',
+        resourceType: 'calendar' as any, // We'll need to extend the type
+        resourceUrl: calendar.url,
+        data: { ...calendar, color } as any
+      });
+    }
+  }
+
+  /**
    * Gets current sync status
    */
   getSyncStatus(): SyncStatus {
@@ -596,6 +637,21 @@ export class SyncService {
         case 'delete':
           await this.davClient.deleteContact(addressBook, contact);
           break;
+      }
+    } else if (resourceType === 'calendar') {
+      const calendar = data as Calendar;
+
+      switch (type) {
+        case 'update':
+          // For calendar updates, we only support property updates (like color)
+          await this.davClient.updateCalendarProperties(calendar, { 
+            color: calendar.color,
+            displayName: calendar.displayName 
+          });
+          break;
+        // Calendar creation and deletion are typically not supported via this mechanism
+        default:
+          console.warn(`Unsupported calendar operation: ${type}`);
       }
     }
   }

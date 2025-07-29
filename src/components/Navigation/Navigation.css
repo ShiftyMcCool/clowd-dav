@@ -393,6 +393,19 @@
   height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.calendar-color-indicator:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.calendar-color-indicator:active {
+  transform: scale(1.1);
 }
 
 .calendar-name {

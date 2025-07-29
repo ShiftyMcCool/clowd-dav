@@ -30,9 +30,9 @@ export interface SyncStatus {
 export interface PendingOperation {
   id: string;
   type: 'create' | 'update' | 'delete';
-  resourceType: 'event' | 'contact';
+  resourceType: 'event' | 'contact' | 'calendar';
   resourceUrl: string;
-  data: CalendarEvent | Contact;
+  data: CalendarEvent | Contact | Calendar;
   timestamp: Date;
 }
 

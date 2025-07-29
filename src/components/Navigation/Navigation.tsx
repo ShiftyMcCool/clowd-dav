@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ThemeToggle } from "../common/ThemeToggle";
 import { SyncStatusButton } from "../common/SyncStatusButton";
+import { ColorSelector } from "../common/ColorSelector";
 import { SyncService } from "../../services/SyncService";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Calendar, AddressBook } from "../../types/dav";
@@ -17,6 +18,7 @@ interface NavigationProps {
   calendars?: Calendar[];
   visibleCalendars?: Set<string>;
   onCalendarToggle?: (calendarUrl: string) => void;
+  onCalendarColorChange?: (calendarUrl: string, color: string) => void;
   // Address book-specific props
   addressBooks?: AddressBook[];
   visibleAddressBooks?: Set<string>;
@@ -33,6 +35,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   calendars = [],
   visibleCalendars = new Set(),
   onCalendarToggle,
+  onCalendarColorChange,
   addressBooks = [],
   visibleAddressBooks = new Set(),
   onAddressBookToggle,
@@ -46,6 +49,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   
   // Track expanded sections
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  
+  // Color selector state
+  const [colorSelectorOpen, setColorSelectorOpen] = useState<string | null>(null);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -95,6 +101,20 @@ export const Navigation: React.FC<NavigationProps> = ({
         onAddressBookToggle(addressBook.url);
       }
     });
+  };
+
+  const handleColorSelectorOpen = (calendarUrl: string) => {
+    setColorSelectorOpen(calendarUrl);
+  };
+
+  const handleColorSelectorClose = () => {
+    setColorSelectorOpen(null);
+  };
+
+  const handleColorChange = (color: string) => {
+    if (colorSelectorOpen && onCalendarColorChange) {
+      onCalendarColorChange(colorSelectorOpen, color);
+    }
   };
 
   // Update app-main class based on sidebar state (only for desktop)
@@ -226,10 +246,15 @@ export const Navigation: React.FC<NavigationProps> = ({
                             <span className="calendar-checkbox-custom">
                               <span className="checkbox-checkmark"></span>
                             </span>
-                            <span 
+                            <button
                               className="calendar-color-indicator"
                               style={{ backgroundColor: calendar.color || '#3b82f6' }}
-                            ></span>
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleColorSelectorOpen(calendar.url);
+                              }}
+                              title="Change calendar color"
+                            />
                             <span className="calendar-name" title={calendar.displayName}>
                               {calendar.displayName}
                             </span>
@@ -371,6 +396,15 @@ export const Navigation: React.FC<NavigationProps> = ({
       </aside>
       
       <div className={`sidebar-overlay ${sidebarOpen ? "overlay-visible" : ""}`} onClick={toggleSidebar}></div>
+      
+      {/* Color Selector Modal */}
+      {colorSelectorOpen && (
+        <ColorSelector
+          currentColor={calendars.find(cal => cal.url === colorSelectorOpen)?.color || '#3b82f6'}
+          onColorChange={handleColorChange}
+          onClose={handleColorSelectorClose}
+        />
+      )}
     </>
   );
 };
