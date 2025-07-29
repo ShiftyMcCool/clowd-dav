@@ -63,3 +63,21 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 14400
+- name: Push to GitHub
+  steps:
+  - !PushRepository
+    name: Push to GitHub
+    remoteUrl: https://github.com/ShiftyMcCool/clowd-dav
+    userName: shiftymccool
+    passwordSecret: github-token
+    force: false
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - !BranchUpdateTrigger
+    branches: main
+    projects: clowd-dav
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 14400
