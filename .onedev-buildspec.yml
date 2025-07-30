@@ -60,7 +60,7 @@ jobs:
   - !PushImageStep
     name: push github latest
     srcPath: ./oci
-    destImage: ghcr.io/ShiftyMcCool/@project_name@:latest
+    destImage: https://ghcr.io/ShiftyMcCool/@project_name@:latest
     registryLogins:
     - registryUrl: ghcr.ioghcr.io
       userName: ShiftyMcCool
