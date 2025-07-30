@@ -60,9 +60,9 @@ jobs:
   - !PushImageStep
     name: push github latest
     srcPath: ./oci
-    destImage: https://ghcr.io/ShiftyMcCool/@project_name@:latest
+    destImage: ghcr.io/ShiftyMcCool/@project_name@:latest
     registryLogins:
-    - registryUrl: ghcr.ioghcr.io
+    - registryUrl: ghcr.io
       userName: ShiftyMcCool
       passwordSecret: github-container
     condition: SUCCESSFUL
@@ -72,7 +72,7 @@ jobs:
     srcPath: ./oci
     destImage: ghcr.io/ShiftyMcCool/@project_name@:@build_number@
     registryLogins:
-    - registryUrl: ghcr.ioghcr.io
+    - registryUrl: ghcr.io
       userName: ShiftyMcCool
       passwordSecret: github-container
     condition: SUCCESSFUL
