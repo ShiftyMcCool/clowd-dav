@@ -30,6 +30,7 @@ export interface Calendar {
   url: string;
   displayName: string;
   color?: string;
+  description?: string;
 }
 
 export interface AddressBook {

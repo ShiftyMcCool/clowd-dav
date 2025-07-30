@@ -665,6 +665,63 @@ export class SyncService {
   }
 
   /**
+   * Updates calendar properties with server sync and offline support
+   */
+  async updateCalendar(
+    calendar: Calendar, 
+    displayName: string, 
+    color: string, 
+    description?: string
+  ): Promise<Calendar> {
+    // Create updated calendar object
+    const updatedCalendar: Calendar = { 
+      ...calendar, 
+      displayName, 
+      color, 
+      description 
+    };
+    
+    // Always update cache optimistically first (for immediate UI feedback)
+    const cachedCalendars = CacheService.getCachedCalendars();
+    const updatedCalendars = cachedCalendars.map(cal => 
+      cal.url === calendar.url ? updatedCalendar : cal
+    );
+    CacheService.storeCachedCalendars(updatedCalendars);
+    
+    if (navigator.onLine) {
+      try {
+        await this.davClient.updateCalendarProperties(calendar, { 
+          displayName, 
+          color, 
+          description 
+        });
+        console.log('Calendar updated successfully on server');
+      } catch (error) {
+        console.warn('Failed to update calendar on server, will retry when online:', error);
+        // If online but failed, add to pending operations
+        CacheService.addPendingOperation({
+          type: 'update',
+          resourceType: 'calendar' as any,
+          resourceUrl: calendar.url,
+          data: updatedCalendar as any
+        });
+        // Don't throw error since we've cached it optimistically
+      }
+    } else {
+      console.log('Offline: adding calendar update to pending operations');
+      // Offline: add to pending operations
+      CacheService.addPendingOperation({
+        type: 'update',
+        resourceType: 'calendar' as any,
+        resourceUrl: calendar.url,
+        data: updatedCalendar as any
+      });
+    }
+    
+    return updatedCalendar;
+  }
+
+  /**
    * Gets current sync status
    */
   getSyncStatus(): SyncStatus {

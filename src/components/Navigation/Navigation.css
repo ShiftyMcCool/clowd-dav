@@ -403,7 +403,7 @@
   group: calendar-item;
 }
 
-.calendar-item:hover .calendar-delete-button {
+.calendar-item:hover .calendar-edit-button {
   opacity: 1;
 }
 
@@ -488,7 +488,7 @@
   text-overflow: ellipsis;
 }
 
-.calendar-delete-button {
+.calendar-edit-button {
   background: transparent;
   border: none;
   color: var(--color-nav-text-muted);
@@ -507,13 +507,13 @@
   justify-content: center;
 }
 
-.calendar-delete-button:hover {
-  background: var(--color-danger);
+.calendar-edit-button:hover {
+  background: var(--color-primary);
   color: white;
   opacity: 1;
 }
 
-.calendar-delete-button:active {
+.calendar-edit-button:active {
   transform: scale(0.95);
 }
 

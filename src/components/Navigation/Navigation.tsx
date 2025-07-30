@@ -20,7 +20,7 @@ interface NavigationProps {
   onCalendarToggle?: (calendarUrl: string) => void;
   onCalendarColorChange?: (calendarUrl: string, color: string) => void;
   onCreateCalendar?: () => void;
-  onDeleteCalendar?: (calendar: Calendar) => void;
+  onEditCalendar?: (calendar: Calendar) => void;
   // Address book-specific props
   addressBooks?: AddressBook[];
   visibleAddressBooks?: Set<string>;
@@ -40,7 +40,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onCalendarToggle,
   onCalendarColorChange,
   onCreateCalendar,
-  onDeleteCalendar,
+  onEditCalendar,
   addressBooks = [],
   visibleAddressBooks = new Set(),
   onAddressBookToggle,
@@ -53,8 +53,14 @@ export const Navigation: React.FC<NavigationProps> = ({
     return window.innerWidth > 768;
   });
   
-  // Track expanded sections
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  // Track expanded sections - expand calendar section by default when on calendar view
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
+    const initialSections = new Set<string>();
+    if (currentView === "calendar") {
+      initialSections.add("calendar");
+    }
+    return initialSections;
+  });
   
   // Color selector state
   const [colorSelectorOpen, setColorSelectorOpen] = useState<string | null>(null);
@@ -70,6 +76,19 @@ export const Navigation: React.FC<NavigationProps> = ({
       setSidebarOpen(false);
     }
   };
+
+  // Auto-expand the current view section
+  React.useEffect(() => {
+    setExpandedSections(prev => {
+      const newExpanded = new Set(prev);
+      if (currentView === "calendar") {
+        newExpanded.add("calendar");
+      } else if (currentView === "contacts") {
+        newExpanded.add("contacts");
+      }
+      return newExpanded;
+    });
+  }, [currentView]);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => {
@@ -274,17 +293,22 @@ export const Navigation: React.FC<NavigationProps> = ({
                             </span>
                           </label>
                           <button
-                            className="calendar-delete-button"
+                            className="calendar-edit-button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              if (window.confirm(`Are you sure you want to delete the calendar "${calendar.displayName}"? This action cannot be undone.`)) {
-                                onDeleteCalendar?.(calendar);
+                              console.log('Edit button clicked for:', calendar.displayName);
+                              console.log('onEditCalendar type:', typeof onEditCalendar);
+                              console.log('onEditCalendar value:', onEditCalendar);
+                              if (onEditCalendar) {
+                                onEditCalendar(calendar);
+                              } else {
+                                console.error('onEditCalendar is not defined!');
                               }
                             }}
-                            title="Delete calendar"
+                            title="Edit calendar"
                           >
-                            ×
+                            ✎
                           </button>
                         </div>
                       ))}

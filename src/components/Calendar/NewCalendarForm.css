@@ -60,10 +60,16 @@
 .form-actions {
   display: flex;
   gap: 0.75rem;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
+}
+
+.form-actions-right {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .form-button {
@@ -110,6 +116,15 @@
   background-color: var(--bg-tertiary);
 }
 
+.form-button-danger {
+  background-color: #dc2626;
+  color: white;
+}
+
+.form-button-danger:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
 .form-error {
   padding: 0.75rem;
   background-color: var(--error-bg);
@@ -128,6 +143,11 @@
   }
 
   .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions-right {
     flex-direction: column-reverse;
   }
 

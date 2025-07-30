@@ -62,6 +62,11 @@ const NewCalendarForm = lazy(() =>
     default: module.NewCalendarForm,
   }))
 );
+const EditCalendarForm = lazy(() =>
+  import("./components/Calendar/EditCalendarForm").then((module) => ({
+    default: module.EditCalendarForm,
+  }))
+);
 const NewAddressBookForm = lazy(() =>
   import("./components/AddressBook/NewAddressBookForm").then((module) => ({
     default: module.NewAddressBookForm,
@@ -94,7 +99,7 @@ const NavigationWrapper: React.FC<{
   onCalendarToggle: (calendarUrl: string) => void;
   onCalendarColorChange: (calendarUrl: string, color: string) => void;
   onCreateCalendar: () => void;
-  onDeleteCalendar: (calendar: Calendar) => void;
+  onEditCalendar: (calendar: Calendar) => void;
   addressBooks: AddressBook[];
   visibleAddressBooks: Set<string>;
   onAddressBookToggle: (addressBookUrl: string) => void;
@@ -110,7 +115,7 @@ const NavigationWrapper: React.FC<{
   onCalendarToggle,
   onCalendarColorChange,
   onCreateCalendar,
-  onDeleteCalendar,
+  onEditCalendar,
   addressBooks,
   visibleAddressBooks,
   onAddressBookToggle,
@@ -135,7 +140,7 @@ const NavigationWrapper: React.FC<{
       onCalendarToggle={onCalendarToggle}
       onCalendarColorChange={onCalendarColorChange}
       onCreateCalendar={onCreateCalendar}
-      onDeleteCalendar={onDeleteCalendar}
+      onEditCalendar={onEditCalendar}
       addressBooks={addressBooks}
       visibleAddressBooks={visibleAddressBooks}
       onAddressBookToggle={onAddressBookToggle}
@@ -161,6 +166,12 @@ const AppContent: React.FC = () => {
     null
   );
   const [showNewCalendarForm, setShowNewCalendarForm] = useState(false);
+  const [editingCalendar, setEditingCalendar] = useState<Calendar | null>(null);
+  
+  // Debug: log when editingCalendar changes
+  useEffect(() => {
+    console.log('editingCalendar state changed:', editingCalendar);
+  }, [editingCalendar]);
   const [showNewAddressBookForm, setShowNewAddressBookForm] = useState(false);
   const [currentDateRange, setCurrentDateRange] = useState<DateRange | null>(
     null
@@ -232,7 +243,10 @@ const AppContent: React.FC = () => {
       // Initialize all calendars as visible by default
       setVisibleCalendars(new Set(calendarsWithColors.map((cal) => cal.url)));
 
-      console.log("Setting address books from cache:", cachedAddressBooks.length);
+      console.log(
+        "Setting address books from cache:",
+        cachedAddressBooks.length
+      );
       setAddressBooks(cachedAddressBooks);
 
       // Initialize all address books as visible by default
@@ -244,25 +258,33 @@ const AppContent: React.FC = () => {
           console.log("Online: attempting background sync...");
           await sync.syncCalendars();
           await sync.syncAddressBooks();
-          
+
           // Update UI with fresh data after sync
           const freshCalendars = CacheService.getCachedCalendars();
           const freshAddressBooks = CacheService.getCachedAddressBooks();
-          
+
           if (freshCalendars.length !== cachedCalendars.length) {
-            const freshCalendarsWithColors = assignDefaultColorsIfMissing(freshCalendars);
+            const freshCalendarsWithColors =
+              assignDefaultColorsIfMissing(freshCalendars);
             setCalendars(freshCalendarsWithColors);
-            setVisibleCalendars(new Set(freshCalendarsWithColors.map((cal) => cal.url)));
+            setVisibleCalendars(
+              new Set(freshCalendarsWithColors.map((cal) => cal.url))
+            );
           }
-          
+
           if (freshAddressBooks.length !== cachedAddressBooks.length) {
             setAddressBooks(freshAddressBooks);
-            setVisibleAddressBooks(new Set(freshAddressBooks.map((ab) => ab.url)));
+            setVisibleAddressBooks(
+              new Set(freshAddressBooks.map((ab) => ab.url))
+            );
           }
-          
+
           console.log("Background sync completed successfully");
         } catch (syncError) {
-          console.warn("Background sync failed, continuing with cached data:", syncError);
+          console.warn(
+            "Background sync failed, continuing with cached data:",
+            syncError
+          );
           // Don't report this as an error to the user since we have cached data
         }
       } else {
@@ -275,7 +297,7 @@ const AppContent: React.FC = () => {
       // Only report error if we have no cached data at all
       const cachedCalendars = CacheService.getCachedCalendars();
       const cachedAddressBooks = CacheService.getCachedAddressBooks();
-      
+
       if (cachedCalendars.length === 0 && cachedAddressBooks.length === 0) {
         errorService.reportError(
           `Failed to load data: ${
@@ -559,11 +581,15 @@ const AppContent: React.FC = () => {
       try {
         const networkService = NetworkService.getInstance();
         const isOnline = networkService.isOnline();
-        
+
         showLoading(
-          editingEvent 
-            ? (isOnline ? "Updating event..." : "Updating event (offline)...") 
-            : (isOnline ? "Creating event..." : "Creating event (offline)...")
+          editingEvent
+            ? isOnline
+              ? "Updating event..."
+              : "Updating event (offline)..."
+            : isOnline
+            ? "Creating event..."
+            : "Creating event (offline)..."
         );
 
         if (editingEvent) {
@@ -574,8 +600,8 @@ const AppContent: React.FC = () => {
           if (originalCalendarUrl && originalCalendarUrl !== newCalendarUrl) {
             // Moving event to different calendar: delete from original, create in new
             showLoading(
-              isOnline 
-                ? "Moving event to different calendar..." 
+              isOnline
+                ? "Moving event to different calendar..."
                 : "Moving event to different calendar (offline)..."
             );
 
@@ -612,7 +638,9 @@ const AppContent: React.FC = () => {
         // Show success message based on online status
         if (!isOnline) {
           errorService.reportError(
-            `Event ${editingEvent ? 'updated' : 'created'} offline. Changes will sync when connection is restored.`,
+            `Event ${
+              editingEvent ? "updated" : "created"
+            } offline. Changes will sync when connection is restored.`,
             "info"
           );
         }
@@ -628,16 +656,18 @@ const AppContent: React.FC = () => {
         // For offline operations, we don't treat them as errors since they're cached
         const networkService = NetworkService.getInstance();
         const isOnline = networkService.isOnline();
-        
+
         if (!isOnline) {
           // Offline: still close the form since the event was cached
           setShowEventForm(false);
           setEditingEvent(null);
           setSelectedCalendar(null);
           setInitialDate(undefined);
-          
+
           errorService.reportError(
-            `Event ${editingEvent ? 'updated' : 'created'} offline. Changes will sync when connection is restored.`,
+            `Event ${
+              editingEvent ? "updated" : "created"
+            } offline. Changes will sync when connection is restored.`,
             "info"
           );
         } else {
@@ -661,8 +691,10 @@ const AppContent: React.FC = () => {
       try {
         const networkService = NetworkService.getInstance();
         const isOnline = networkService.isOnline();
-        
-        showLoading(isOnline ? "Deleting event..." : "Deleting event (offline)...");
+
+        showLoading(
+          isOnline ? "Deleting event..." : "Deleting event (offline)..."
+        );
 
         await sync.deleteEvent(calendar, event);
 
@@ -690,14 +722,14 @@ const AppContent: React.FC = () => {
         // For offline operations, we don't treat them as errors since they're cached
         const networkService = NetworkService.getInstance();
         const isOnline = networkService.isOnline();
-        
+
         if (!isOnline) {
           // Offline: still close the form since the event was removed from cache
           setShowEventForm(false);
           setEditingEvent(null);
           setSelectedCalendar(null);
           setInitialDate(undefined);
-          
+
           errorService.reportError(
             "Event deleted offline. Changes will sync when connection is restored.",
             "info"
@@ -729,118 +761,191 @@ const AppContent: React.FC = () => {
     setShowNewCalendarForm(true);
   }, []);
 
-  const handleDeleteCalendar = useCallback(async (calendar: Calendar) => {
-    try {
-      showLoading("Deleting calendar...");
-      
-      // Delete calendar using sync service
-      await sync.deleteCalendar(calendar);
-      
-      // Update calendars state
-      setCalendars((prevCalendars) => {
-        return prevCalendars.filter(c => c.url !== calendar.url);
-      });
-      
-      // Remove from visible calendars
-      setVisibleCalendars((prev) => {
-        const newVisible = new Set(prev);
-        newVisible.delete(calendar.url);
-        return newVisible;
-      });
-      
-      // Refresh events to remove deleted calendar's events from view
-      await sync.syncEvents();
-      
-      hideLoading();
-    } catch (error) {
-      console.error('Failed to delete calendar:', error);
-      hideLoading();
-      // You might want to show an error message to the user here
-    }
-  }, [sync, showLoading, hideLoading]);
+  const handleEditCalendar = useCallback((calendar: Calendar) => {
+    console.log('Edit calendar clicked:', calendar.displayName);
+    setEditingCalendar(calendar);
+  }, []);
 
-  const handleNewCalendarSave = useCallback(async (
-    displayName: string,
-    color: string,
-    description?: string
-  ) => {
-    try {
-      showLoading("Creating calendar...");
-      
-      // Create calendar using sync service
-      const newCalendar = await sync.createCalendar(displayName, color, description);
-      
-      // Update calendars state
-      setCalendars((prevCalendars) => {
-        const updatedCalendars = [...prevCalendars, newCalendar];
-        return assignDefaultColorsIfMissing(updatedCalendars);
-      });
-      
-      // Make the new calendar visible by default
-      setVisibleCalendars((prev) => {
-        const newSet = new Set(prev);
-        newSet.add(newCalendar.url);
-        return newSet;
-      });
-      
-      // Close the form
-      setShowNewCalendarForm(false);
-      
-      // Show success message
-      errorService.reportError(
-        `Calendar "${displayName}" created successfully!`,
-        "info"
-      );
-    } catch (error) {
-      console.error('Failed to create calendar:', error);
-      throw error; // Re-throw to let the form handle the error display
-    } finally {
-      hideLoading();
-    }
-  }, [sync, errorService, showLoading, hideLoading]);
+  const handleNewCalendarSave = useCallback(
+    async (displayName: string, color: string, description?: string) => {
+      try {
+        showLoading("Creating calendar...");
+
+        // Create calendar using sync service
+        const newCalendar = await sync.createCalendar(
+          displayName,
+          color,
+          description
+        );
+
+        // Update calendars state
+        setCalendars((prevCalendars) => {
+          const updatedCalendars = [...prevCalendars, newCalendar];
+          return assignDefaultColorsIfMissing(updatedCalendars);
+        });
+
+        // Make the new calendar visible by default
+        setVisibleCalendars((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(newCalendar.url);
+          return newSet;
+        });
+
+        // Close the form
+        setShowNewCalendarForm(false);
+
+        // Show success message
+        errorService.reportError(
+          `Calendar "${displayName}" created successfully!`,
+          "info"
+        );
+      } catch (error) {
+        console.error("Failed to create calendar:", error);
+        throw error; // Re-throw to let the form handle the error display
+      } finally {
+        hideLoading();
+      }
+    },
+    [sync, errorService, showLoading, hideLoading]
+  );
 
   const handleNewCalendarCancel = useCallback(() => {
     setShowNewCalendarForm(false);
+  }, []);
+
+  const handleEditCalendarSave = useCallback(
+    async (
+      calendar: Calendar,
+      displayName: string,
+      color: string,
+      description?: string
+    ) => {
+      try {
+        showLoading("Updating calendar...");
+
+        // Update calendar using sync service
+        const updatedCalendar = await sync.updateCalendar(
+          calendar,
+          displayName,
+          color,
+          description
+        );
+
+        // Update calendars state
+        setCalendars((prevCalendars) => {
+          return prevCalendars.map((c) =>
+            c.url === calendar.url ? updatedCalendar : c
+          );
+        });
+
+        // Close the form
+        setEditingCalendar(null);
+
+        // Show success message
+        errorService.reportError(
+          `Calendar "${displayName}" updated successfully!`,
+          "info"
+        );
+      } catch (error) {
+        console.error("Failed to update calendar:", error);
+        throw error; // Re-throw to let the form handle the error display
+      } finally {
+        hideLoading();
+      }
+    },
+    [sync, errorService, showLoading, hideLoading]
+  );
+
+  const handleEditCalendarDelete = useCallback(
+    async (calendar: Calendar) => {
+      try {
+        showLoading("Deleting calendar...");
+
+        // Delete calendar using sync service
+        await sync.deleteCalendar(calendar);
+
+        // Update calendars state
+        setCalendars((prevCalendars) => {
+          return prevCalendars.filter((c) => c.url !== calendar.url);
+        });
+
+        // Remove from visible calendars
+        setVisibleCalendars((prev) => {
+          const newVisible = new Set(prev);
+          newVisible.delete(calendar.url);
+          return newVisible;
+        });
+
+        // Refresh events to remove deleted calendar's events from view
+        await sync.syncEvents();
+
+        // Close the form
+        setEditingCalendar(null);
+
+        // Show success message
+        errorService.reportError(
+          `Calendar "${calendar.displayName}" deleted successfully!`,
+          "info"
+        );
+      } catch (error) {
+        console.error("Failed to delete calendar:", error);
+        throw error; // Re-throw to let the form handle the error display
+      } finally {
+        hideLoading();
+      }
+    },
+    [sync, errorService, showLoading, hideLoading]
+  );
+
+  const handleEditCalendarCancel = useCallback(() => {
+    setEditingCalendar(null);
   }, []);
 
   const handleCreateAddressBook = useCallback(() => {
     setShowNewAddressBookForm(true);
   }, []);
 
-  const handleNewAddressBookSave = useCallback(async (displayName: string, description?: string) => {
-    if (!sync) {
-      throw new Error('Sync service not available');
-    }
+  const handleNewAddressBookSave = useCallback(
+    async (displayName: string, description?: string) => {
+      if (!sync) {
+        throw new Error("Sync service not available");
+      }
 
-    try {
-      
-      // Create address book using sync service
-      const newAddressBook = await sync.createAddressBook(displayName, description);
-      
-      // Update address books state
-      setAddressBooks(prev => {
-        const updated = [...prev, newAddressBook];
-        return updated;
-      });
-      
-      // Make the new address book visible by default
-      setVisibleAddressBooks(prev => {
-        const newSet = new Set(prev);
-        newSet.add(newAddressBook.url);
-        return newSet;
-      });
-      
-      // Close the form
-      setShowNewAddressBookForm(false);
-      
-      // Show success message
-      console.log('Address book created successfully:', newAddressBook.displayName);
-      
-    } catch (error) {
-      console.error('Failed to create address book:', error);
-      throw error; // Re-throw to let the form handle the error display
-    }
-  }, [sync]);
+      try {
+        // Create address book using sync service
+        const newAddressBook = await sync.createAddressBook(
+          displayName,
+          description
+        );
+
+        // Update address books state
+        setAddressBooks((prev) => {
+          const updated = [...prev, newAddressBook];
+          return updated;
+        });
+
+        // Make the new address book visible by default
+        setVisibleAddressBooks((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(newAddressBook.url);
+          return newSet;
+        });
+
+        // Close the form
+        setShowNewAddressBookForm(false);
+
+        // Show success message
+        console.log(
+          "Address book created successfully:",
+          newAddressBook.displayName
+        );
+      } catch (error) {
+        console.error("Failed to create address book:", error);
+        throw error; // Re-throw to let the form handle the error display
+      }
+    },
+    [sync]
+  );
 
   const handleNewAddressBookCancel = useCallback(() => {
     setShowNewAddressBookForm(false);
@@ -970,30 +1075,44 @@ const AppContent: React.FC = () => {
               </Suspense>
             )}
 
-
+            {/* Edit Calendar Form Modal */}
+            {editingCalendar && (
+              <Suspense fallback={<div />}>
+                <EditCalendarForm
+                  calendar={editingCalendar}
+                  onSave={handleEditCalendarSave}
+                  onDelete={handleEditCalendarDelete}
+                  onCancel={handleEditCalendarCancel}
+                />
+              </Suspense>
+            )}
           </div>
         </Suspense>
       );
     };
     return Component;
   }, [
-    calendarCurrentDate,
-    calendarViewType,
     calendars,
-    editingEvent,
     events,
-    visibleCalendars,
-    handleCreateEvent,
     handleDateRangeChange,
     handleEventClick,
+    handleCreateEvent,
+    calendarCurrentDate,
+    calendarViewType,
+    showEventForm,
+    editingEvent,
+    selectedCalendar,
     handleEventSave,
     handleEventDelete,
+    initialDate,
+    showNewCalendarForm,
     handleNewCalendarSave,
     handleNewCalendarCancel,
-    initialDate,
-    selectedCalendar,
-    showEventForm,
-    showNewCalendarForm,
+    editingCalendar,
+    handleEditCalendarSave,
+    handleEditCalendarDelete,
+    handleEditCalendarCancel,
+    visibleCalendars,
   ]);
 
   // Contacts component
@@ -1039,36 +1158,37 @@ const AppContent: React.FC = () => {
     });
   }, []);
 
-  const handleCalendarColorChange = useCallback(async (calendarUrl: string, color: string) => {
-    // Find the calendar to update
-    const calendar = calendars.find(cal => cal.url === calendarUrl);
-    if (!calendar) {
-      console.error('Calendar not found for color update:', calendarUrl);
-      return;
-    }
+  const handleCalendarColorChange = useCallback(
+    async (calendarUrl: string, color: string) => {
+      // Find the calendar to update
+      const calendar = calendars.find((cal) => cal.url === calendarUrl);
+      if (!calendar) {
+        console.error("Calendar not found for color update:", calendarUrl);
+        return;
+      }
 
-    try {
-      // Update color on server and in cache
-      await sync.updateCalendarColor(calendar, color);
-      
-      // Update the calendar in state (this should already be done by the sync service optimistically)
-      setCalendars((prevCalendars) => 
-        prevCalendars.map((cal) => 
-          cal.url === calendarUrl 
-            ? { ...cal, color }
-            : cal
-        )
-      );
-    } catch (error) {
-      console.error('Failed to update calendar color:', error);
-      errorService.reportError(
-        `Failed to update calendar color: ${errorService.formatErrorMessage(error)}`,
-        "error"
-      );
-    }
-  }, [calendars, sync, errorService]);
+      try {
+        // Update color on server and in cache
+        await sync.updateCalendarColor(calendar, color);
 
-
+        // Update the calendar in state (this should already be done by the sync service optimistically)
+        setCalendars((prevCalendars) =>
+          prevCalendars.map((cal) =>
+            cal.url === calendarUrl ? { ...cal, color } : cal
+          )
+        );
+      } catch (error) {
+        console.error("Failed to update calendar color:", error);
+        errorService.reportError(
+          `Failed to update calendar color: ${errorService.formatErrorMessage(
+            error
+          )}`,
+          "error"
+        );
+      }
+    },
+    [calendars, sync, errorService]
+  );
 
   // Update current view based on location
   const location = useLocation();
@@ -1156,7 +1276,9 @@ const AppContent: React.FC = () => {
     } catch (error) {
       console.error("Manual sync failed:", error);
       errorService.reportError(
-        `Sync failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Sync failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
         "error"
       );
     } finally {
@@ -1178,7 +1300,7 @@ const AppContent: React.FC = () => {
           onCalendarToggle={handleCalendarToggle}
           onCalendarColorChange={handleCalendarColorChange}
           onCreateCalendar={handleCreateCalendar}
-          onDeleteCalendar={handleDeleteCalendar}
+          onEditCalendar={handleEditCalendar}
           addressBooks={addressBooks}
           visibleAddressBooks={visibleAddressBooks}
           onCreateAddressBook={handleCreateAddressBook}
