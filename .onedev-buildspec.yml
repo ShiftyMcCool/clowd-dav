@@ -57,6 +57,26 @@ jobs:
       passwordSecret: access-token
     condition: SUCCESSFUL
     optional: false
+  - !PushImageStep
+    name: push github latest
+    srcPath: ./oci
+    destImage: ghcr.io/ShiftyMcCool/@project_name@:latest
+    registryLogins:
+    - registryUrl: ghcr.ioghcr.io
+      userName: ShiftyMcCool
+      passwordSecret: github-container
+    condition: SUCCESSFUL
+    optional: false
+  - !PushImageStep
+    name: push github ci
+    srcPath: ./oci
+    destImage: ghcr.io/ShiftyMcCool/@project_name@:@build_number@
+    registryLogins:
+    - registryUrl: ghcr.ioghcr.io
+      userName: ShiftyMcCool
+      passwordSecret: github-container
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !BranchUpdateTrigger {}
   retryCondition: never
