@@ -808,6 +808,106 @@ export class DAVClient implements IDAVClient {
   }
 
   /**
+   * Create a new address book using MKCOL request
+   * Implements CardDAV address book creation protocol
+   */
+  public async createAddressBook(
+    displayName: string,
+    description?: string
+  ): Promise<AddressBook> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before creating address books."
+      );
+    }
+
+    if (!this.provider) {
+      throw new Error(
+        "Provider not set. Please set a provider before creating address books."
+      );
+    }
+
+    // Generate unique address book URL
+    const baseUrl = this.authConfig.carddavUrl.replace(/\/$/, "");
+    const discoveryPath = this.provider.getAddressBookDiscoveryPath();
+    const username = this.authConfig.username;
+    
+    // Generate a unique address book ID based on display name
+    const addressBookId = displayName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') + '-' + Date.now();
+
+    let addressBookUrl: string;
+    if (baseUrl.includes(discoveryPath.replace(/\/$/, ""))) {
+      if (baseUrl.endsWith(`/${username}`)) {
+        addressBookUrl = `${baseUrl}/${addressBookId}/`;
+      } else {
+        addressBookUrl = `${baseUrl}/${username}/${addressBookId}/`;
+      }
+    } else {
+      addressBookUrl = `${baseUrl}${discoveryPath}${username}/${addressBookId}/`;
+    }
+
+    // Convert to relative URL for proxy in development
+    const requestUrl = this.convertToProxyUrl(addressBookUrl);
+
+    // MKCOL request body for address book creation
+    const mkcolBody = `<?xml version="1.0" encoding="utf-8" ?>
+<D:mkcol xmlns:D="DAV:" xmlns:CARD="urn:ietf:params:xml:ns:carddav">
+  <D:set>
+    <D:prop>
+      <D:resourcetype>
+        <D:collection/>
+        <CARD:addressbook/>
+      </D:resourcetype>
+      <D:displayname>${displayName}</D:displayname>
+      ${description ? `<CARD:addressbook-description>${description}</CARD:addressbook-description>` : ''}
+    </D:prop>
+  </D:set>
+</D:mkcol>`;
+
+    try {
+      // MKCOL request to create the address book
+      const response = await this.makeRequest(requestUrl, {
+        method: "MKCOL",
+        body: mkcolBody,
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+        },
+      });
+
+      // Check if creation was successful (201 Created)
+      if (response.status !== 201) {
+        throw new Error(`Address book creation failed with status ${response.status}`);
+      }
+
+      // Return the created address book object
+      const serverBaseUrl = new URL(this.authConfig.carddavUrl).origin;
+      return {
+        url: `${serverBaseUrl}${addressBookUrl.replace(serverBaseUrl, '')}`,
+        displayName,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Address book creation failed: ${error.message}`);
+        }
+        throw new Error(`Address book creation failed: ${error.message}`);
+      }
+      throw new Error("Address book creation failed: Unknown error");
+    }
+  }
+
+  /**
    * Update calendar properties using PROPPATCH request
    * Implements CalDAV calendar property update protocol
    */

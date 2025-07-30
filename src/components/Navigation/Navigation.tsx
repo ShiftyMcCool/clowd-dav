@@ -24,6 +24,7 @@ interface NavigationProps {
   addressBooks?: AddressBook[];
   visibleAddressBooks?: Set<string>;
   onAddressBookToggle?: (addressBookUrl: string) => void;
+  onCreateAddressBook?: () => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -41,6 +42,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   addressBooks = [],
   visibleAddressBooks = new Set(),
   onAddressBookToggle,
+  onCreateAddressBook,
 }) => {
   const { theme, toggleTheme } = useTheme();
   // Initialize sidebar state based on screen size
@@ -201,7 +203,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                     <span className="nav-icon calendar-icon"></span>
                     {sidebarOpen && <span className="nav-text">Calendar</span>}
                   </button>
-                  {sidebarOpen && currentView === "calendar" && calendars.length > 0 && (
+                  {sidebarOpen && currentView === "calendar" && (
                     <button
                       className={`section-expand-button ${
                         expandedSections.has("calendar") ? "expanded" : ""
@@ -295,7 +297,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                     <span className="nav-icon contacts-icon"></span>
                     {sidebarOpen && <span className="nav-text">Contacts</span>}
                   </button>
-                  {sidebarOpen && currentView === "contacts" && addressBooks.length > 0 && (
+                  {sidebarOpen && currentView === "contacts" && (
                     <button
                       className={`section-expand-button ${
                         expandedSections.has("contacts") ? "expanded" : ""
@@ -310,8 +312,8 @@ export const Navigation: React.FC<NavigationProps> = ({
                 
                 {sidebarOpen && currentView === "contacts" && expandedSections.has("contacts") && (
                   <div className="nav-section-content">
-                    {addressBooks.length > 1 && (
-                      <div className="address-book-controls">
+                    <div className="address-book-controls">
+                      {addressBooks.length > 1 && (
                         <button
                           className="address-book-toggle-all"
                           onClick={handleAddressBookToggleAll}
@@ -326,8 +328,16 @@ export const Navigation: React.FC<NavigationProps> = ({
                           }`}></span>
                           {addressBooks.every(ab => visibleAddressBooks.has(ab.url)) ? 'Hide All' : 'Show All'}
                         </button>
-                      </div>
-                    )}
+                      )}
+                      <button
+                        className="address-book-add-button"
+                        onClick={onCreateAddressBook}
+                        title="Create new address book"
+                      >
+                        <span className="add-icon">+</span>
+                        New Address Book
+                      </button>
+                    </div>
 
                     <div className="address-book-list">
                       {addressBooks.map(addressBook => (

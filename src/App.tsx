@@ -62,6 +62,11 @@ const NewCalendarForm = lazy(() =>
     default: module.NewCalendarForm,
   }))
 );
+const NewAddressBookForm = lazy(() =>
+  import("./components/AddressBook/NewAddressBookForm").then((module) => ({
+    default: module.NewAddressBookForm,
+  }))
+);
 
 // Protected route component
 const ProtectedRoute: React.FC<{
@@ -92,6 +97,7 @@ const NavigationWrapper: React.FC<{
   addressBooks: AddressBook[];
   visibleAddressBooks: Set<string>;
   onAddressBookToggle: (addressBookUrl: string) => void;
+  onCreateAddressBook: () => void;
 }> = ({
   currentView,
   username,
@@ -106,6 +112,7 @@ const NavigationWrapper: React.FC<{
   addressBooks,
   visibleAddressBooks,
   onAddressBookToggle,
+  onCreateAddressBook,
 }) => {
   const navigate = useNavigate();
 
@@ -129,6 +136,7 @@ const NavigationWrapper: React.FC<{
       addressBooks={addressBooks}
       visibleAddressBooks={visibleAddressBooks}
       onAddressBookToggle={onAddressBookToggle}
+      onCreateAddressBook={onCreateAddressBook}
     />
   );
 };
@@ -150,6 +158,7 @@ const AppContent: React.FC = () => {
     null
   );
   const [showNewCalendarForm, setShowNewCalendarForm] = useState(false);
+  const [showNewAddressBookForm, setShowNewAddressBookForm] = useState(false);
   const [currentDateRange, setCurrentDateRange] = useState<DateRange | null>(
     null
   );
@@ -761,6 +770,49 @@ const AppContent: React.FC = () => {
     setShowNewCalendarForm(false);
   }, []);
 
+  const handleCreateAddressBook = useCallback(() => {
+    setShowNewAddressBookForm(true);
+  }, []);
+
+  const handleNewAddressBookSave = useCallback(async (displayName: string, description?: string) => {
+    if (!sync) {
+      throw new Error('Sync service not available');
+    }
+
+    try {
+      
+      // Create address book using sync service
+      const newAddressBook = await sync.createAddressBook(displayName, description);
+      
+      // Update address books state
+      setAddressBooks(prev => {
+        const updated = [...prev, newAddressBook];
+        return updated;
+      });
+      
+      // Make the new address book visible by default
+      setVisibleAddressBooks(prev => {
+        const newSet = new Set(prev);
+        newSet.add(newAddressBook.url);
+        return newSet;
+      });
+      
+      // Close the form
+      setShowNewAddressBookForm(false);
+      
+      // Show success message
+      console.log('Address book created successfully:', newAddressBook.displayName);
+      
+    } catch (error) {
+      console.error('Failed to create address book:', error);
+      throw error; // Re-throw to let the form handle the error display
+    }
+  }, [sync]);
+
+  const handleNewAddressBookCancel = useCallback(() => {
+    setShowNewAddressBookForm(false);
+  }, []);
+
   // Load address books using sync service
   const loadAddressBooks = async () => {
     try {
@@ -884,6 +936,8 @@ const AppContent: React.FC = () => {
                 />
               </Suspense>
             )}
+
+
           </div>
         </Suspense>
       );
@@ -1093,6 +1147,7 @@ const AppContent: React.FC = () => {
           onCreateCalendar={handleCreateCalendar}
           addressBooks={addressBooks}
           visibleAddressBooks={visibleAddressBooks}
+          onCreateAddressBook={handleCreateAddressBook}
           onAddressBookToggle={handleAddressBookToggle}
         />
       )}
@@ -1147,6 +1202,16 @@ const AppContent: React.FC = () => {
         text={loadingState.text}
         size={loadingState.size}
       />
+
+      {/* Global Modals */}
+      {showNewAddressBookForm && (
+        <Suspense fallback={<div />}>
+          <NewAddressBookForm
+            onSave={handleNewAddressBookSave}
+            onCancel={handleNewAddressBookCancel}
+          />
+        </Suspense>
+      )}
 
       {/* Error message container */}
       <div className="error-container">

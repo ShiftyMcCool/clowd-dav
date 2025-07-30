@@ -569,6 +569,34 @@ export class SyncService {
   }
 
   /**
+   * Creates a new address book with offline support
+   */
+  async createAddressBook(
+    displayName: string,
+    description?: string
+  ): Promise<AddressBook> {
+    if (navigator.onLine) {
+      try {
+        // Create address book on server
+        const newAddressBook = await this.davClient.createAddressBook(displayName, description);
+        
+        // Update cache immediately
+        const cachedAddressBooks = CacheService.getCachedAddressBooks();
+        const updatedAddressBooks = [...cachedAddressBooks, newAddressBook];
+        CacheService.storeCachedAddressBooks(updatedAddressBooks);
+        
+        console.log('Address book created successfully on server');
+        return newAddressBook;
+      } catch (error) {
+        console.error('Failed to create address book on server:', error);
+        throw error; // Don't cache address book creation failures
+      }
+    } else {
+      throw new Error('Address book creation requires an internet connection');
+    }
+  }
+
+  /**
    * Updates calendar color with server sync and offline support
    */
   async updateCalendarColor(calendar: Calendar, color: string): Promise<void> {
