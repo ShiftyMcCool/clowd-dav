@@ -908,6 +908,114 @@ export class DAVClient implements IDAVClient {
   }
 
   /**
+   * Update address book properties using PROPPATCH request
+   * Implements CardDAV address book property update protocol
+   */
+  public async updateAddressBookProperties(
+    addressBook: AddressBook,
+    properties: { displayName?: string }
+  ): Promise<void> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before updating address book properties."
+      );
+    }
+
+    // Convert to relative URL for proxy in development
+    const requestUrl = this.convertToProxyUrl(addressBook.url);
+
+    // Build PROPPATCH request body
+    let propsToSet = '';
+    if (properties.displayName) {
+      propsToSet += `<D:displayname>${properties.displayName}</D:displayname>`;
+    }
+
+    const proppatchBody = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propertyupdate xmlns:D="DAV:" xmlns:CARD="urn:ietf:params:xml:ns:carddav">
+  <D:set>
+    <D:prop>
+      ${propsToSet}
+    </D:prop>
+  </D:set>
+</D:propertyupdate>`;
+
+    try {
+      // PROPPATCH request to update address book properties
+      const response = await this.makeRequest(requestUrl, {
+        method: "PROPPATCH",
+        body: proppatchBody,
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+        },
+      });
+
+      // Check if update was successful (200 OK or 207 Multi-Status)
+      if (response.status !== 200 && response.status !== 207) {
+        throw new Error(`Address book property update failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Address book property update failed: ${error.message}`);
+        }
+        throw new Error(`Address book property update failed: ${error.message}`);
+      }
+      throw new Error("Address book property update failed: Unknown error");
+    }
+  }
+
+  /**
+   * Delete an existing address book using DELETE request
+   * Implements CardDAV address book deletion protocol
+   */
+  public async deleteAddressBook(addressBook: AddressBook): Promise<void> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before deleting address books."
+      );
+    }
+
+    // Convert to relative URL for proxy in development
+    const requestUrl = this.convertToProxyUrl(addressBook.url);
+
+    try {
+      // DELETE request to remove the address book
+      const response = await this.delete(requestUrl);
+
+      // Check if deletion was successful (200 OK, 204 No Content, or 404 Not Found)
+      if (
+        response.status !== 200 &&
+        response.status !== 204 &&
+        response.status !== 404
+      ) {
+        throw new Error(`Address book deletion failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Address book deletion failed: ${error.message}`);
+        }
+        throw new Error(`Address book deletion failed: ${error.message}`);
+      }
+      throw new Error("Address book deletion failed: Unknown error");
+    }
+  }
+
+  /**
    * Delete an existing calendar using DELETE request
    * Implements CalDAV calendar deletion protocol
    */

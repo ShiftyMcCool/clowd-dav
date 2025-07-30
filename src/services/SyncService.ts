@@ -624,6 +624,84 @@ export class SyncService {
   }
 
   /**
+   * Updates address book properties with server sync and offline support
+   */
+  async updateAddressBook(
+    addressBook: AddressBook, 
+    displayName: string
+  ): Promise<AddressBook> {
+    // Create updated address book object
+    const updatedAddressBook: AddressBook = { 
+      ...addressBook, 
+      displayName
+    };
+    
+    // Always update cache optimistically first (for immediate UI feedback)
+    const cachedAddressBooks = CacheService.getCachedAddressBooks();
+    const updatedAddressBooks = cachedAddressBooks.map(ab => 
+      ab.url === addressBook.url ? updatedAddressBook : ab
+    );
+    CacheService.storeCachedAddressBooks(updatedAddressBooks);
+    
+    if (navigator.onLine) {
+      try {
+        await this.davClient.updateAddressBookProperties(addressBook, { 
+          displayName
+        });
+        console.log('Address book updated successfully on server');
+      } catch (error) {
+        console.warn('Failed to update address book on server, will retry when online:', error);
+        // If online but failed, add to pending operations
+        CacheService.addPendingOperation({
+          type: 'update',
+          resourceType: 'addressbook' as any,
+          resourceUrl: addressBook.url,
+          data: updatedAddressBook as any
+        });
+        // Don't throw error since we've cached it optimistically
+      }
+    } else {
+      console.log('Offline: adding address book update to pending operations');
+      // Offline: add to pending operations
+      CacheService.addPendingOperation({
+        type: 'update',
+        resourceType: 'addressbook' as any,
+        resourceUrl: addressBook.url,
+        data: updatedAddressBook as any
+      });
+    }
+    
+    return updatedAddressBook;
+  }
+
+  /**
+   * Deletes an address book with offline support
+   */
+  async deleteAddressBook(addressBook: AddressBook): Promise<void> {
+    if (navigator.onLine) {
+      try {
+        // Delete address book on server
+        await this.davClient.deleteAddressBook(addressBook);
+        
+        // Remove from cache immediately
+        const cachedAddressBooks = CacheService.getCachedAddressBooks();
+        const updatedAddressBooks = cachedAddressBooks.filter(ab => ab.url !== addressBook.url);
+        CacheService.storeCachedAddressBooks(updatedAddressBooks);
+        
+        // Also remove all cached contacts for this address book
+        CacheService.clearCachedContacts(addressBook.url);
+        
+        console.log('Address book deleted successfully from server');
+      } catch (error) {
+        console.error('Failed to delete address book on server:', error);
+        throw error;
+      }
+    } else {
+      throw new Error('Address book deletion requires an internet connection');
+    }
+  }
+
+  /**
    * Updates calendar color with server sync and offline support
    */
   async updateCalendarColor(calendar: Calendar, color: string): Promise<void> {
@@ -793,6 +871,20 @@ export class SyncService {
         // Calendar creation and deletion are typically not supported via this mechanism
         default:
           console.warn(`Unsupported calendar operation: ${type}`);
+      }
+    } else if (resourceType === 'addressbook') {
+      const addressBook = data as AddressBook;
+
+      switch (type) {
+        case 'update':
+          // For address book updates, we only support property updates (like displayName)
+          await this.davClient.updateAddressBookProperties(addressBook, { 
+            displayName: addressBook.displayName 
+          });
+          break;
+        // Address book creation and deletion are typically not supported via this mechanism
+        default:
+          console.warn(`Unsupported address book operation: ${type}`);
       }
     }
   }

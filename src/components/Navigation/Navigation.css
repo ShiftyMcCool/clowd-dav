@@ -568,6 +568,11 @@
 .address-book-item {
   display: flex;
   align-items: center;
+  position: relative;
+}
+
+.address-book-item:hover .address-book-edit-button {
+  opacity: 1;
 }
 
 .address-book-toggle-label {
@@ -631,6 +636,35 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.address-book-edit-button {
+  background: transparent;
+  border: none;
+  color: var(--color-nav-text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: all 0.2s ease;
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.address-book-edit-button:hover {
+  background: var(--color-primary);
+  color: white;
+  opacity: 1;
+}
+
+.address-book-edit-button:active {
+  transform: scale(0.95);
 }
 
 .address-book-empty-state {

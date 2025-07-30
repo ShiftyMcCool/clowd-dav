@@ -153,6 +153,19 @@ export class CacheService {
   }
 
   /**
+   * Clears cached contacts for a specific address book
+   */
+  static clearCachedContacts(addressBookUrl: string): void {
+    console.log('clearCachedContacts called for:', addressBookUrl);
+    const cacheData = this.getCacheData() || this.getEmptyCacheData();
+    
+    if (cacheData.contacts[addressBookUrl]) {
+      delete cacheData.contacts[addressBookUrl];
+      this.storeCacheData(cacheData);
+    }
+  }
+
+  /**
    * Stores cached contacts for a specific address book
    */
   static storeCachedContacts(addressBookUrl: string, contacts: Contact[], etag?: string): void {

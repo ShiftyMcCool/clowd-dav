@@ -72,6 +72,11 @@ const NewAddressBookForm = lazy(() =>
     default: module.NewAddressBookForm,
   }))
 );
+const EditAddressBookForm = lazy(() =>
+  import("./components/AddressBook/EditAddressBookForm").then((module) => ({
+    default: module.EditAddressBookForm,
+  }))
+);
 
 // Protected route component
 const ProtectedRoute: React.FC<{
@@ -104,6 +109,7 @@ const NavigationWrapper: React.FC<{
   visibleAddressBooks: Set<string>;
   onAddressBookToggle: (addressBookUrl: string) => void;
   onCreateAddressBook: () => void;
+  onEditAddressBook: (addressBook: AddressBook) => void;
 }> = ({
   currentView,
   username,
@@ -120,6 +126,7 @@ const NavigationWrapper: React.FC<{
   visibleAddressBooks,
   onAddressBookToggle,
   onCreateAddressBook,
+  onEditAddressBook,
 }) => {
   const navigate = useNavigate();
 
@@ -145,6 +152,7 @@ const NavigationWrapper: React.FC<{
       visibleAddressBooks={visibleAddressBooks}
       onAddressBookToggle={onAddressBookToggle}
       onCreateAddressBook={onCreateAddressBook}
+      onEditAddressBook={onEditAddressBook}
     />
   );
 };
@@ -173,6 +181,7 @@ const AppContent: React.FC = () => {
     console.log('editingCalendar state changed:', editingCalendar);
   }, [editingCalendar]);
   const [showNewAddressBookForm, setShowNewAddressBookForm] = useState(false);
+  const [editingAddressBook, setEditingAddressBook] = useState<AddressBook | null>(null);
   const [currentDateRange, setCurrentDateRange] = useState<DateRange | null>(
     null
   );
@@ -905,6 +914,10 @@ const AppContent: React.FC = () => {
     setShowNewAddressBookForm(true);
   }, []);
 
+  const handleEditAddressBook = useCallback((addressBook: AddressBook) => {
+    setEditingAddressBook(addressBook);
+  }, []);
+
   const handleNewAddressBookSave = useCallback(
     async (displayName: string, description?: string) => {
       if (!sync) {
@@ -949,6 +962,84 @@ const AppContent: React.FC = () => {
 
   const handleNewAddressBookCancel = useCallback(() => {
     setShowNewAddressBookForm(false);
+  }, []);
+
+  const handleEditAddressBookSave = useCallback(
+    async (addressBook: AddressBook, displayName: string) => {
+      try {
+        showLoading("Updating address book...");
+
+        // Update address book using sync service
+        const updatedAddressBook = await sync.updateAddressBook(
+          addressBook,
+          displayName
+        );
+
+        // Update address books state
+        setAddressBooks((prevAddressBooks) => {
+          return prevAddressBooks.map((ab) =>
+            ab.url === addressBook.url ? updatedAddressBook : ab
+          );
+        });
+
+        // Close the form
+        setEditingAddressBook(null);
+
+        // Show success message
+        errorService.reportError(
+          `Address book "${displayName}" updated successfully!`,
+          "info"
+        );
+      } catch (error) {
+        console.error("Failed to update address book:", error);
+        throw error; // Re-throw to let the form handle the error display
+      } finally {
+        hideLoading();
+      }
+    },
+    [sync, errorService, showLoading, hideLoading]
+  );
+
+  const handleEditAddressBookDelete = useCallback(
+    async (addressBook: AddressBook) => {
+      try {
+        showLoading("Deleting address book...");
+
+        // Delete address book using sync service
+        await sync.deleteAddressBook(addressBook);
+
+        // Update address books state
+        setAddressBooks((prevAddressBooks) => {
+          return prevAddressBooks.filter((ab) => ab.url !== addressBook.url);
+        });
+
+        // Remove from visible address books
+        setVisibleAddressBooks((prev) => {
+          const newVisible = new Set(prev);
+          newVisible.delete(addressBook.url);
+          return newVisible;
+        });
+
+        // Close the form
+        setEditingAddressBook(null);
+
+        // Show success message
+        errorService.reportError(
+          `Address book "${addressBook.displayName}" deleted successfully!`,
+          "info"
+        );
+      } catch (error) {
+        console.error("Failed to delete address book:", error);
+        throw error; // Re-throw to let the form handle the error display
+      } finally {
+        hideLoading();
+      }
+    },
+    [sync, errorService, showLoading, hideLoading]
+  );
+
+  const handleEditAddressBookCancel = useCallback(() => {
+    setEditingAddressBook(null);
   }, []);
 
   // Load address books using sync service
@@ -1304,6 +1395,7 @@ const AppContent: React.FC = () => {
           addressBooks={addressBooks}
           visibleAddressBooks={visibleAddressBooks}
           onCreateAddressBook={handleCreateAddressBook}
+          onEditAddressBook={handleEditAddressBook}
           onAddressBookToggle={handleAddressBookToggle}
         />
       )}
@@ -1365,6 +1457,17 @@ const AppContent: React.FC = () => {
           <NewAddressBookForm
             onSave={handleNewAddressBookSave}
             onCancel={handleNewAddressBookCancel}
+          />
+        </Suspense>
+      )}
+
+      {editingAddressBook && (
+        <Suspense fallback={<div />}>
+          <EditAddressBookForm
+            addressBook={editingAddressBook}
+            onSave={handleEditAddressBookSave}
+            onDelete={handleEditAddressBookDelete}
+            onCancel={handleEditAddressBookCancel}
           />
         </Suspense>
       )}

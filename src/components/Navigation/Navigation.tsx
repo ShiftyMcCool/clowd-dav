@@ -26,6 +26,7 @@ interface NavigationProps {
   visibleAddressBooks?: Set<string>;
   onAddressBookToggle?: (addressBookUrl: string) => void;
   onCreateAddressBook?: () => void;
+  onEditAddressBook?: (addressBook: AddressBook) => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -45,6 +46,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   visibleAddressBooks = new Set(),
   onAddressBookToggle,
   onCreateAddressBook,
+  onEditAddressBook,
 }) => {
   const { theme, toggleTheme } = useTheme();
   // Initialize sidebar state based on screen size
@@ -395,6 +397,19 @@ export const Navigation: React.FC<NavigationProps> = ({
                               {addressBook.displayName}
                             </span>
                           </label>
+                          <button
+                            className="address-book-edit-button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (onEditAddressBook) {
+                                onEditAddressBook(addressBook);
+                              }
+                            }}
+                            title="Edit address book"
+                          >
+                            ✎
+                          </button>
                         </div>
                       ))}
                     </div>
