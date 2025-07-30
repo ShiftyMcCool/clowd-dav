@@ -569,6 +569,33 @@ export class SyncService {
   }
 
   /**
+   * Deletes a calendar with offline support
+   */
+  async deleteCalendar(calendar: Calendar): Promise<void> {
+    if (navigator.onLine) {
+      try {
+        // Delete calendar on server
+        await this.davClient.deleteCalendar(calendar);
+        
+        // Remove from cache immediately
+        const cachedCalendars = CacheService.getCachedCalendars();
+        const updatedCalendars = cachedCalendars.filter(c => c.url !== calendar.url);
+        CacheService.storeCachedCalendars(updatedCalendars);
+        
+        // Also remove all cached events for this calendar
+        CacheService.clearCachedEvents(calendar.url);
+        
+        console.log('Calendar deleted successfully from server');
+      } catch (error) {
+        console.error('Failed to delete calendar on server:', error);
+        throw error;
+      }
+    } else {
+      throw new Error('Calendar deletion requires an internet connection');
+    }
+  }
+
+  /**
    * Creates a new address book with offline support
    */
   async createAddressBook(

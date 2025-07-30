@@ -908,6 +908,50 @@ export class DAVClient implements IDAVClient {
   }
 
   /**
+   * Delete an existing calendar using DELETE request
+   * Implements CalDAV calendar deletion protocol
+   */
+  public async deleteCalendar(calendar: Calendar): Promise<void> {
+    if (!this.authConfig) {
+      throw new Error(
+        "Authentication not configured. Please set auth config before deleting calendars."
+      );
+    }
+
+    // Convert to relative URL for proxy in development
+    const requestUrl = this.convertToProxyUrl(calendar.url);
+
+    try {
+      // DELETE request to remove the calendar
+      const response = await this.delete(requestUrl);
+
+      // Check if deletion was successful (200 OK, 204 No Content, or 404 Not Found)
+      if (
+        response.status !== 200 &&
+        response.status !== 204 &&
+        response.status !== 404
+      ) {
+        throw new Error(`Calendar deletion failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        // If it's a network/HTTP error, wrap it with context
+        if (
+          error.message.includes("Authentication failed") ||
+          error.message.includes("Access forbidden") ||
+          error.message.includes("Resource not found") ||
+          error.message.includes("Server error") ||
+          error.message.includes("Network error")
+        ) {
+          throw new Error(`Calendar deletion failed: ${error.message}`);
+        }
+        throw new Error(`Calendar deletion failed: ${error.message}`);
+      }
+      throw new Error("Calendar deletion failed: Unknown error");
+    }
+  }
+
+  /**
    * Update calendar properties using PROPPATCH request
    * Implements CalDAV calendar property update protocol
    */

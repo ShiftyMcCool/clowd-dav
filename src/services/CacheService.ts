@@ -141,6 +141,18 @@ export class CacheService {
   }
 
   /**
+   * Clears cached events for a specific calendar
+   */
+  static clearCachedEvents(calendarUrl: string): void {
+    const cacheData = this.getCacheData() || this.getEmptyCacheData();
+    
+    if (cacheData.events[calendarUrl]) {
+      delete cacheData.events[calendarUrl];
+      this.storeCacheData(cacheData);
+    }
+  }
+
+  /**
    * Stores cached contacts for a specific address book
    */
   static storeCachedContacts(addressBookUrl: string, contacts: Contact[], etag?: string): void {

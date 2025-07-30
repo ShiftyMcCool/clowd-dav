@@ -20,6 +20,7 @@ interface NavigationProps {
   onCalendarToggle?: (calendarUrl: string) => void;
   onCalendarColorChange?: (calendarUrl: string, color: string) => void;
   onCreateCalendar?: () => void;
+  onDeleteCalendar?: (calendar: Calendar) => void;
   // Address book-specific props
   addressBooks?: AddressBook[];
   visibleAddressBooks?: Set<string>;
@@ -39,6 +40,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onCalendarToggle,
   onCalendarColorChange,
   onCreateCalendar,
+  onDeleteCalendar,
   addressBooks = [],
   visibleAddressBooks = new Set(),
   onAddressBookToggle,
@@ -271,6 +273,19 @@ export const Navigation: React.FC<NavigationProps> = ({
                               {calendar.displayName}
                             </span>
                           </label>
+                          <button
+                            className="calendar-delete-button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (window.confirm(`Are you sure you want to delete the calendar "${calendar.displayName}"? This action cannot be undone.`)) {
+                                onDeleteCalendar?.(calendar);
+                              }
+                            }}
+                            title="Delete calendar"
+                          >
+                            ×
+                          </button>
                         </div>
                       ))}
                     </div>

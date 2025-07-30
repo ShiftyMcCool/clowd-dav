@@ -399,6 +399,12 @@
 .calendar-item {
   display: flex;
   align-items: center;
+  position: relative;
+  group: calendar-item;
+}
+
+.calendar-item:hover .calendar-delete-button {
+  opacity: 1;
 }
 
 .calendar-toggle-label {
@@ -480,6 +486,35 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.calendar-delete-button {
+  background: transparent;
+  border: none;
+  color: var(--color-nav-text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: all 0.2s ease;
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-delete-button:hover {
+  background: var(--color-danger);
+  color: white;
+  opacity: 1;
+}
+
+.calendar-delete-button:active {
+  transform: scale(0.95);
 }
 
 .calendar-empty-state {

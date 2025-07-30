@@ -94,6 +94,7 @@ const NavigationWrapper: React.FC<{
   onCalendarToggle: (calendarUrl: string) => void;
   onCalendarColorChange: (calendarUrl: string, color: string) => void;
   onCreateCalendar: () => void;
+  onDeleteCalendar: (calendar: Calendar) => void;
   addressBooks: AddressBook[];
   visibleAddressBooks: Set<string>;
   onAddressBookToggle: (addressBookUrl: string) => void;
@@ -109,6 +110,7 @@ const NavigationWrapper: React.FC<{
   onCalendarToggle,
   onCalendarColorChange,
   onCreateCalendar,
+  onDeleteCalendar,
   addressBooks,
   visibleAddressBooks,
   onAddressBookToggle,
@@ -133,6 +135,7 @@ const NavigationWrapper: React.FC<{
       onCalendarToggle={onCalendarToggle}
       onCalendarColorChange={onCalendarColorChange}
       onCreateCalendar={onCreateCalendar}
+      onDeleteCalendar={onDeleteCalendar}
       addressBooks={addressBooks}
       visibleAddressBooks={visibleAddressBooks}
       onAddressBookToggle={onAddressBookToggle}
@@ -726,6 +729,36 @@ const AppContent: React.FC = () => {
     setShowNewCalendarForm(true);
   }, []);
 
+  const handleDeleteCalendar = useCallback(async (calendar: Calendar) => {
+    try {
+      showLoading("Deleting calendar...");
+      
+      // Delete calendar using sync service
+      await sync.deleteCalendar(calendar);
+      
+      // Update calendars state
+      setCalendars((prevCalendars) => {
+        return prevCalendars.filter(c => c.url !== calendar.url);
+      });
+      
+      // Remove from visible calendars
+      setVisibleCalendars((prev) => {
+        const newVisible = new Set(prev);
+        newVisible.delete(calendar.url);
+        return newVisible;
+      });
+      
+      // Refresh events to remove deleted calendar's events from view
+      await sync.syncEvents();
+      
+      hideLoading();
+    } catch (error) {
+      console.error('Failed to delete calendar:', error);
+      hideLoading();
+      // You might want to show an error message to the user here
+    }
+  }, [sync, showLoading, hideLoading]);
+
   const handleNewCalendarSave = useCallback(async (
     displayName: string,
     color: string,
@@ -1145,6 +1178,7 @@ const AppContent: React.FC = () => {
           onCalendarToggle={handleCalendarToggle}
           onCalendarColorChange={handleCalendarColorChange}
           onCreateCalendar={handleCreateCalendar}
+          onDeleteCalendar={handleDeleteCalendar}
           addressBooks={addressBooks}
           visibleAddressBooks={visibleAddressBooks}
           onCreateAddressBook={handleCreateAddressBook}

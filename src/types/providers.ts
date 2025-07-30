@@ -18,6 +18,9 @@ export interface DAVClient {
   getContacts(addressBook: AddressBook): Promise<Contact[]>;
   createEvent(calendar: Calendar, event: CalendarEvent): Promise<void>;
   updateEvent(calendar: Calendar, event: CalendarEvent): Promise<void>;
+  deleteEvent(calendar: Calendar, event: CalendarEvent): Promise<void>;
+  createCalendar(displayName: string, color?: string, description?: string): Promise<Calendar>;
+  deleteCalendar(calendar: Calendar): Promise<void>;
   createContact(addressBook: AddressBook, contact: Contact): Promise<void>;
   updateContact(addressBook: AddressBook, contact: Contact): Promise<void>;
 }
