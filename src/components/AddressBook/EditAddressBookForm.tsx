@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Modal } from '../common';
+import { Modal, ColorPicker } from '../common';
 import { AddressBook } from '../../types/dav';
 import '../Calendar/NewCalendarForm.css'; // Reuse the same styles
 
 interface EditAddressBookFormProps {
   addressBook: AddressBook;
-  onSave: (addressBook: AddressBook, displayName: string) => Promise<void>;
+  onSave: (addressBook: AddressBook, displayName: string, color: string) => Promise<void>;
   onDelete: (addressBook: AddressBook) => Promise<void>;
   onCancel: () => void;
 }
@@ -17,6 +17,7 @@ export const EditAddressBookForm: React.FC<EditAddressBookFormProps> = ({
   onCancel,
 }) => {
   const [displayName, setDisplayName] = useState(addressBook.displayName || '');
+  const [color, setColor] = useState(addressBook.color || '#6b7280');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export const EditAddressBookForm: React.FC<EditAddressBookFormProps> = ({
     setError(null);
 
     try {
-      await onSave(addressBook, displayName.trim());
+      await onSave(addressBook, displayName.trim(), color);
     } catch (error) {
       console.error('Error updating address book:', error);
       setError(error instanceof Error ? error.message : 'Failed to update address book');
@@ -57,6 +58,10 @@ export const EditAddressBookForm: React.FC<EditAddressBookFormProps> = ({
       setError(error instanceof Error ? error.message : 'Failed to delete address book');
       setIsDeleting(false);
     }
+  };
+
+  const handleColorChange = (newColor: string) => {
+    setColor(newColor);
   };
 
   return (
@@ -88,6 +93,17 @@ export const EditAddressBookForm: React.FC<EditAddressBookFormProps> = ({
               disabled={isSubmitting || isDeleting}
               autoFocus
               maxLength={100}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              Color
+            </label>
+            <ColorPicker
+              currentColor={color}
+              onColorChange={handleColorChange}
+              className="addressbook-color-picker"
             />
           </div>
 

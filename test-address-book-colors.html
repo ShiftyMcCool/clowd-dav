@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Address Book Colors Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .color-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .address-book-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #f5f5f5;
+            border-radius: 3px;
+        }
+        button {
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Address Book Colors Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Address Book Color Service</h2>
+        <p>This test simulates the address book color functionality:</p>
+        
+        <div id="address-books">
+            <div class="address-book-item">
+                <span class="color-indicator" style="background-color: #6b7280;" id="color-1"></span>
+                <span>Personal Contacts</span>
+                <button onclick="changeColor('ab1', '#3b82f6')">Blue</button>
+                <button onclick="changeColor('ab1', '#10b981')">Green</button>
+                <button onclick="changeColor('ab1', '#ef4444')">Red</button>
+            </div>
+            
+            <div class="address-book-item">
+                <span class="color-indicator" style="background-color: #6b7280;" id="color-2"></span>
+                <span>Work Contacts</span>
+                <button onclick="changeColor('ab2', '#8b5cf6')">Purple</button>
+                <button onclick="changeColor('ab2', '#f59e0b')">Yellow</button>
+                <button onclick="changeColor('ab2', '#ec4899')">Pink</button>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button onclick="testLocalStorage()">Test Local Storage</button>
+            <button onclick="clearColors()">Clear All Colors</button>
+            <div id="storage-test-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simulate the AddressBookColorService functionality
+        class AddressBookColorService {
+            static COLORS_KEY = 'addressbook_colors';
+            
+            static getColor(addressBookUrl) {
+                try {
+                    const storedColors = localStorage.getItem(this.COLORS_KEY);
+                    if (!storedColors) return undefined;
+                    const colors = JSON.parse(storedColors);
+                    return colors[addressBookUrl];
+                } catch (error) {
+                    console.error('Failed to retrieve address book color:', error);
+                    return undefined;
+                }
+            }
+            
+            static setColor(addressBookUrl, color) {
+                try {
+                    const storedColors = localStorage.getItem(this.COLORS_KEY);
+                    const colors = storedColors ? JSON.parse(storedColors) : {};
+                    colors[addressBookUrl] = color;
+                    localStorage.setItem(this.COLORS_KEY, JSON.stringify(colors));
+                } catch (error) {
+                    console.error('Failed to store address book color:', error);
+                }
+            }
+            
+            static getAllColors() {
+                try {
+                    const storedColors = localStorage.getItem(this.COLORS_KEY);
+                    return storedColors ? JSON.parse(storedColors) : {};
+                } catch (error) {
+                    console.error('Failed to retrieve all address book colors:', error);
+                    return {};
+                }
+            }
+            
+            static clearAllColors() {
+                localStorage.removeItem(this.COLORS_KEY);
+            }
+        }
+        
+        function changeColor(addressBookId, color) {
+            // Update the visual indicator
+            const colorElement = document.getElementById(`color-${addressBookId.slice(-1)}`);
+            colorElement.style.backgroundColor = color;
+            
+            // Store in local storage
+            AddressBookColorService.setColor(addressBookId, color);
+            
+            console.log(`Set color for ${addressBookId} to ${color}`);
+        }
+        
+        function testLocalStorage() {
+            const colors = AddressBookColorService.getAllColors();
+            const resultDiv = document.getElementById('storage-test-result');
+            resultDiv.innerHTML = `<h3>Stored Colors:</h3><pre>${JSON.stringify(colors, null, 2)}</pre>`;
+        }
+        
+        function clearColors() {
+            AddressBookColorService.clearAllColors();
+            // Reset visual indicators to default gray
+            document.getElementById('color-1').style.backgroundColor = '#6b7280';
+            document.getElementById('color-2').style.backgroundColor = '#6b7280';
+            document.getElementById('storage-test-result').innerHTML = '<p>Colors cleared!</p>';
+        }
+        
+        // Load saved colors on page load
+        window.onload = function() {
+            const ab1Color = AddressBookColorService.getColor('ab1');
+            const ab2Color = AddressBookColorService.getColor('ab2');
+            
+            if (ab1Color) {
+                document.getElementById('color-1').style.backgroundColor = ab1Color;
+            }
+            if (ab2Color) {
+                document.getElementById('color-2').style.backgroundColor = ab2Color;
+            }
+        };
+    </script>
+</body>
+</html>

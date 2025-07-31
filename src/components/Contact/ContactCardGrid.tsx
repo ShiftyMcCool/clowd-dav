@@ -182,6 +182,14 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
     }
   });
 
+  // Helper function to get address book color for a contact
+  const getAddressBookColor = (contact: Contact): string | undefined => {
+    const addressBook = addressBooks.find(ab => 
+      (contact as any).addressBookUrl === ab.url
+    );
+    return addressBook?.color;
+  };
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
@@ -341,6 +349,7 @@ export const ContactCardGrid: React.FC<ContactCardGridProps> = ({
                 contact={contact}
                 onClick={handleContactClick}
                 onEdit={handleEditContact}
+                addressBookColor={getAddressBookColor(contact)}
               />
             ))}
           </div>

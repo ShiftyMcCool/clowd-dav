@@ -38,6 +38,7 @@ import {
 import { useSync } from "./hooks/useSync";
 import { ContactCardGrid } from "./components/Contact";
 import { assignDefaultColorsIfMissing } from "./utils/calendarColors";
+import { AddressBookColorService } from "./services/AddressBookColorService";
 import "./styles/themes.css";
 import "./App.css";
 
@@ -108,6 +109,7 @@ const NavigationWrapper: React.FC<{
   addressBooks: AddressBook[];
   visibleAddressBooks: Set<string>;
   onAddressBookToggle: (addressBookUrl: string) => void;
+  onAddressBookColorChange: (addressBookUrl: string, color: string) => void;
   onCreateAddressBook: () => void;
   onEditAddressBook: (addressBook: AddressBook) => void;
 }> = ({
@@ -125,6 +127,7 @@ const NavigationWrapper: React.FC<{
   addressBooks,
   visibleAddressBooks,
   onAddressBookToggle,
+  onAddressBookColorChange,
   onCreateAddressBook,
   onEditAddressBook,
 }) => {
@@ -151,6 +154,7 @@ const NavigationWrapper: React.FC<{
       addressBooks={addressBooks}
       visibleAddressBooks={visibleAddressBooks}
       onAddressBookToggle={onAddressBookToggle}
+      onAddressBookColorChange={onAddressBookColorChange}
       onCreateAddressBook={onCreateAddressBook}
       onEditAddressBook={onEditAddressBook}
     />
@@ -256,10 +260,11 @@ const AppContent: React.FC = () => {
         "Setting address books from cache:",
         cachedAddressBooks.length
       );
-      setAddressBooks(cachedAddressBooks);
+      const addressBooksWithColors = AddressBookColorService.applyColorsToAddressBooks(cachedAddressBooks);
+      setAddressBooks(addressBooksWithColors);
 
       // Initialize all address books as visible by default
-      setVisibleAddressBooks(new Set(cachedAddressBooks.map((ab) => ab.url)));
+      setVisibleAddressBooks(new Set(addressBooksWithColors.map((ab) => ab.url)));
 
       if (isOnline) {
         // Online: try to sync with server in background (don't block UI)
@@ -282,9 +287,10 @@ const AppContent: React.FC = () => {
           }
 
           if (freshAddressBooks.length !== cachedAddressBooks.length) {
-            setAddressBooks(freshAddressBooks);
+            const freshAddressBooksWithColors = AddressBookColorService.applyColorsToAddressBooks(freshAddressBooks);
+            setAddressBooks(freshAddressBooksWithColors);
             setVisibleAddressBooks(
-              new Set(freshAddressBooks.map((ab) => ab.url))
+              new Set(freshAddressBooksWithColors.map((ab) => ab.url))
             );
           }
 
@@ -965,7 +971,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   const handleEditAddressBookSave = useCallback(
-    async (addressBook: AddressBook, displayName: string) => {
+    async (addressBook: AddressBook, displayName: string, color: string) => {
       try {
         showLoading("Updating address book...");
 
@@ -975,10 +981,13 @@ const AppContent: React.FC = () => {
           displayName
         );
 
-        // Update address books state
+        // Store color locally
+        AddressBookColorService.setColor(addressBook.url, color);
+
+        // Update address books state with color
         setAddressBooks((prevAddressBooks) => {
           return prevAddressBooks.map((ab) =>
-            ab.url === addressBook.url ? updatedAddressBook : ab
+            ab.url === addressBook.url ? { ...updatedAddressBook, color } : ab
           );
         });
 
@@ -1281,6 +1290,38 @@ const AppContent: React.FC = () => {
     [calendars, sync, errorService]
   );
 
+  const handleAddressBookColorChange = useCallback(
+    async (addressBookUrl: string, color: string) => {
+      // Find the address book to update
+      const addressBook = addressBooks.find((ab) => ab.url === addressBookUrl);
+      if (!addressBook) {
+        console.error("Address book not found for color update:", addressBookUrl);
+        return;
+      }
+
+      try {
+        // Store color locally (address book colors are not synced to server)
+        AddressBookColorService.setColor(addressBookUrl, color);
+
+        // Update the address book in state
+        setAddressBooks((prevAddressBooks) =>
+          prevAddressBooks.map((ab) =>
+            ab.url === addressBookUrl ? { ...ab, color } : ab
+          )
+        );
+      } catch (error) {
+        console.error("Failed to update address book color:", error);
+        errorService.reportError(
+          `Failed to update address book color: ${errorService.formatErrorMessage(
+            error
+          )}`,
+          "error"
+        );
+      }
+    },
+    [addressBooks, errorService]
+  );
+
   // Update current view based on location
   const location = useLocation();
   useEffect(() => {
@@ -1397,6 +1438,7 @@ const AppContent: React.FC = () => {
           onCreateAddressBook={handleCreateAddressBook}
           onEditAddressBook={handleEditAddressBook}
           onAddressBookToggle={handleAddressBookToggle}
+          onAddressBookColorChange={handleAddressBookColorChange}
         />
       )}
 

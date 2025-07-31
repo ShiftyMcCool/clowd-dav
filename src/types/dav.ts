@@ -36,6 +36,7 @@ export interface Calendar {
 export interface AddressBook {
   url: string;
   displayName: string;
+  color?: string; // Local color setting, not synced to server
 }
 
 export interface DateRange {

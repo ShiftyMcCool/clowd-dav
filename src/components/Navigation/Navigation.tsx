@@ -25,6 +25,7 @@ interface NavigationProps {
   addressBooks?: AddressBook[];
   visibleAddressBooks?: Set<string>;
   onAddressBookToggle?: (addressBookUrl: string) => void;
+  onAddressBookColorChange?: (addressBookUrl: string, color: string) => void;
   onCreateAddressBook?: () => void;
   onEditAddressBook?: (addressBook: AddressBook) => void;
 }
@@ -45,6 +46,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   addressBooks = [],
   visibleAddressBooks = new Set(),
   onAddressBookToggle,
+  onAddressBookColorChange,
   onCreateAddressBook,
   onEditAddressBook,
 }) => {
@@ -141,6 +143,16 @@ export const Navigation: React.FC<NavigationProps> = ({
   const handleColorChange = (color: string) => {
     if (colorSelectorOpen && onCalendarColorChange) {
       onCalendarColorChange(colorSelectorOpen, color);
+    }
+  };
+
+  const handleAddressBookColorSelectorOpen = (addressBookUrl: string) => {
+    setColorSelectorOpen(addressBookUrl);
+  };
+
+  const handleAddressBookColorChange = (color: string) => {
+    if (colorSelectorOpen && onAddressBookColorChange) {
+      onAddressBookColorChange(colorSelectorOpen, color);
     }
   };
 
@@ -393,6 +405,18 @@ export const Navigation: React.FC<NavigationProps> = ({
                             <span className="address-book-checkbox-custom">
                               <span className="checkbox-checkmark"></span>
                             </span>
+                            <button
+                              className="address-book-color-indicator"
+                              style={{ 
+                                backgroundColor: addressBook.color || '#6b7280',
+                                '--address-book-color': addressBook.color || '#6b7280'
+                              } as React.CSSProperties}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleAddressBookColorSelectorOpen(addressBook.url);
+                              }}
+                              title="Change address book color"
+                            />
                             <span className="address-book-name" title={addressBook.displayName}>
                               {addressBook.displayName}
                             </span>
@@ -474,8 +498,16 @@ export const Navigation: React.FC<NavigationProps> = ({
       {/* Color Selector Modal */}
       {colorSelectorOpen && (
         <ColorSelector
-          currentColor={calendars.find(cal => cal.url === colorSelectorOpen)?.color || '#3b82f6'}
-          onColorChange={handleColorChange}
+          currentColor={
+            calendars.find(cal => cal.url === colorSelectorOpen)?.color ||
+            addressBooks.find(ab => ab.url === colorSelectorOpen)?.color ||
+            '#3b82f6'
+          }
+          onColorChange={
+            calendars.find(cal => cal.url === colorSelectorOpen) 
+              ? handleColorChange 
+              : handleAddressBookColorChange
+          }
           onClose={handleColorSelectorClose}
         />
       )}

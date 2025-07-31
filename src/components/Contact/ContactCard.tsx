@@ -7,12 +7,14 @@ interface ContactCardProps {
   contact: Contact;
   onClick: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
+  addressBookColor?: string;
 }
 
 export const ContactCard: React.FC<ContactCardProps> = ({
   contact,
   onClick,
   onEdit,
+  addressBookColor,
 }) => {
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -31,8 +33,36 @@ export const ContactCard: React.FC<ContactCardProps> = ({
   const primaryEmail = contact.email?.[0];
   const primaryPhone = contact.tel?.[0];
 
+  // Convert hex color to rgba for transparency
+  const getColorWithOpacity = (color: string, opacity: number): string => {
+    if (!color || color === 'transparent') return 'transparent';
+    
+    // Handle hex colors
+    if (color.startsWith('#')) {
+      const hex = color.slice(1);
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    
+    // Handle rgb/rgba colors - just append opacity
+    if (color.startsWith('rgb')) {
+      return color.replace('rgb(', 'rgba(').replace(')', `, ${opacity})`);
+    }
+    
+    return color;
+  };
+
   return (
-    <div className="contact-card" onClick={() => onClick(contact)}>
+    <div 
+      className="contact-card" 
+      onClick={() => onClick(contact)}
+      style={{
+        '--address-book-color-light': getColorWithOpacity(addressBookColor || '', 0.15),
+        '--address-book-color-hover': getColorWithOpacity(addressBookColor || '', 0.25)
+      } as React.CSSProperties}
+    >
       <div className="contact-card-header">
         <div className="contact-header-left">
           <div className="contact-avatar">
