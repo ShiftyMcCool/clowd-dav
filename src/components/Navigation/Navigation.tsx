@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ThemeToggle } from "../common/ThemeToggle";
 import { SyncStatusButton } from "../common/SyncStatusButton";
-import { ColorSelector } from "../common/ColorSelector";
+import { ColorPicker } from "../common/ColorPicker";
 import { SyncService } from "../../services/SyncService";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Calendar, AddressBook } from "../../types/dav";
@@ -495,9 +495,15 @@ export const Navigation: React.FC<NavigationProps> = ({
       
       <div className={`sidebar-overlay ${sidebarOpen ? "overlay-visible" : ""}`} onClick={toggleSidebar}></div>
       
-      {/* Color Selector Modal */}
+      {/* Color Picker Modal */}
       {colorSelectorOpen && (
-        <ColorSelector
+        <ColorPicker
+          modal={true}
+          title={
+            calendars.find(cal => cal.url === colorSelectorOpen) 
+              ? "Choose Calendar Color"
+              : "Choose Address Book Color"
+          }
           currentColor={
             calendars.find(cal => cal.url === colorSelectorOpen)?.color ||
             addressBooks.find(ab => ab.url === colorSelectorOpen)?.color ||

@@ -25,8 +25,8 @@ Added a comprehensive color selector feature that allows users to customize cale
 ## Technical Implementation
 
 ### New Components
-- `ColorSelector.tsx` - Main color picker modal component
-- `ColorSelector.css` - Responsive styling with theme support
+- `ColorPicker.tsx` - Unified color picker component supporting both embedded and modal modes
+- `ColorPicker.css` - Responsive styling with theme support for both modes
 
 ### Enhanced Services
 - `DAVClient.ts` - Added server color management:
@@ -79,7 +79,7 @@ The preset colors include:
 - Slate (#64748b)
 
 ## Testing
-- Comprehensive unit tests for ColorSelector component
+- Comprehensive unit tests for ColorPicker component covering both embedded and modal modes
 - Existing calendar color utility tests continue to pass
 - Build process validates TypeScript integration
 

@@ -5,6 +5,9 @@ interface ColorPickerProps {
   currentColor: string;
   onColorChange: (color: string) => void;
   className?: string;
+  modal?: boolean;
+  onClose?: () => void;
+  title?: string;
 }
 
 const PRESET_COLORS = [
@@ -30,23 +33,39 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   currentColor,
   onColorChange,
   className = '',
+  modal = false,
+  onClose,
+  title = 'Choose Color',
 }) => {
   const [customColor, setCustomColor] = useState(currentColor);
 
   const handlePresetColorClick = (color: string) => {
     onColorChange(color);
     setCustomColor(color);
+    if (modal && onClose) {
+      onClose();
+    }
   };
 
   const handleCustomColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = e.target.value;
     setCustomColor(newColor);
-    onColorChange(newColor);
+    if (!modal) {
+      onColorChange(newColor);
+    }
   };
 
-  return (
-    <div className={`color-picker-embedded ${className}`}>
+  const handleCustomColorApply = () => {
+    onColorChange(customColor);
+    if (modal && onClose) {
+      onClose();
+    }
+  };
+
+  const content = (
+    <div className={`color-picker-content ${className}`}>
       <div className="preset-colors">
+        {modal && <h4>Preset Colors</h4>}
         <div className="color-grid">
           {PRESET_COLORS.map((color) => (
             <button
@@ -62,7 +81,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
       </div>
       
       <div className="custom-color">
-        <div className="custom-color-label">Custom Color</div>
+        {modal && <h4>Custom Color</h4>}
+        {!modal && <div className="custom-color-label">Custom Color</div>}
         <div className="custom-color-input">
           <input
             type="color"
@@ -76,12 +96,39 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
             value={customColor}
             onChange={handleCustomColorChange}
             className="color-text-input"
-            placeholder="#3b82f6"
+            placeholder={modal ? "#000000" : "#3b82f6"}
             pattern="^#[0-9A-Fa-f]{6}$"
             title="Enter hex color code"
           />
+          {modal && (
+            <button
+              className="apply-custom-color"
+              onClick={handleCustomColorApply}
+              type="button"
+            >
+              Apply
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
+
+  if (modal) {
+    return (
+      <div className="color-picker-overlay" onClick={onClose}>
+        <div className="color-picker-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="color-picker-header">
+            <h3>{title}</h3>
+            <button className="color-picker-close" onClick={onClose} type="button">
+              ×
+            </button>
+          </div>
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  return <div className="color-picker-embedded">{content}</div>;
 };
