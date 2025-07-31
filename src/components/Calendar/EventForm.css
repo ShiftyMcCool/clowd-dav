@@ -182,15 +182,6 @@
   color: var(--color-text-primary);
 }
 
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 32px;
-  padding-top: 20px;
-  border-top: 1px solid var(--color-border-primary);
-}
-
 .form-actions-left {
   display: flex;
 }
@@ -265,11 +256,6 @@
   .form-row {
     flex-direction: column;
     gap: 0;
-  }
-  
-  .form-actions {
-    flex-direction: column;
-    gap: 12px;
   }
   
   .form-actions-left,
