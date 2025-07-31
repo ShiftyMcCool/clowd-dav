@@ -307,7 +307,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                             </span>
                           </label>
                           <button
-                            className="calendar-edit-button"
+                            className="sidebar-edit-button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -422,7 +422,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                             </span>
                           </label>
                           <button
-                            className="address-book-edit-button"
+                            className="sidebar-edit-button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
