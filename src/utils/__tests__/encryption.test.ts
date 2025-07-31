@@ -1,4 +1,4 @@
-import { EncryptionService } from '../encryption';
+import { EncryptionService } from '../../utils/encryption';
 import { AuthConfig } from '../../types/auth';
 
 // Mock TextEncoder/TextDecoder for Node.js test environment

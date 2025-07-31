@@ -1,5 +1,5 @@
 import { AuthConfig, AuthManager as IAuthManager } from '../types/auth';
-import { SecureStorage } from '../utilities/secureStorage';
+import { SecureStorage } from '../utils/secureStorage';
 import { DAVClient } from './DAVClient';
 import { ProviderFactory } from '../providers/ProviderFactory';
 
