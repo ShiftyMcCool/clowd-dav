@@ -89,17 +89,31 @@
   transform: rotate(180deg);
 }
 
-.sidebar-title {
-  margin: 0 0 0 1rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  white-space: nowrap;
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: 1rem;
   opacity: 1;
   transition: opacity 0.3s ease;
 }
 
-.sidebar-collapsed .sidebar-title {
+.sidebar-collapsed .sidebar-brand {
   opacity: 0;
+}
+
+.sidebar-logo {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-nav-text);
 }
 
 .sidebar-navigation {
@@ -904,12 +918,14 @@
     border-bottom: 1px solid var(--color-nav-text-muted);
   }
 
-  .sidebar-title {
+  .sidebar-brand {
     margin: 0;
-    text-align: center;
+    justify-content: center;
+  }
+
+  .sidebar-title {
+    font-size: 1.25rem;
     line-height: 1;
-    font-size: 1.5rem;
-    padding-top: 0px;
   }
 
   .sidebar {

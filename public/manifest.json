@@ -1,8 +1,14 @@
 {
   "short_name": "Clowd-DAV",
-  "name": "Clowd-DAV - CalDAV & CardDAV Client",
-  "description": "A modern web-based CalDAV and CardDAV client for managing calendars and contacts",
+  "name": "Clowd-DAV",
+  "description": "A web-based CalDAV and CardDAV client for managing calendars and contacts",
   "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
     {
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
@@ -24,7 +30,7 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#000000",
+  "theme_color": "#4A90E2",
   "background_color": "#ffffff",
   "scope": "/",
   "categories": ["productivity", "utilities"],

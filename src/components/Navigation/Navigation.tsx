@@ -220,7 +220,12 @@ export const Navigation: React.FC<NavigationProps> = ({
           >
             <span className="toggle-icon"></span>
           </button>
-          {sidebarOpen && <h1 className="sidebar-title">Clowd-DAV</h1>}
+          {sidebarOpen && (
+            <div className="sidebar-brand">
+              <img src="/logo.svg" alt="Clowd-DAV Logo" className="sidebar-logo" />
+              <h1 className="sidebar-title">Clowd-DAV</h1>
+            </div>
+          )}
         </div>
 
         <nav className="sidebar-navigation">

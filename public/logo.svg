@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+    <style>
+        .logo-primary {
+            fill: var(--primary-color, #4A90E2);
+        }
+
+        .logo-secondary {
+            stroke: var(--secondary-color, #2E5C8A);
+        }
+
+        .logo-icon-fill {
+            fill: var(--logo-icon-color, white);
+        }
+
+        .logo-header-fill {
+            fill: var(--secondary-color, #2E5C8A);
+        }
+    </style>
+
+    <!-- Cloud background -->
+    <path
+        d="M25 45c-8 0-15 7-15 15s7 15 15 15h50c8 0 15-7 15-15s-7-15-15-15c0-12-10-22-22-22-8 0-15 4-19 10-2-1-4-1-6-1-4 0-8 3-8 8 0 2 1 4 2 5z"
+        class="logo-primary logo-secondary" stroke-width="1" />
+
+    <!-- Contact/Person icon (overlapping left) -->
+    <g transform="translate(25, 32)">
+        <!-- Person head -->
+        <circle cx="12" cy="8" r="5" class="logo-icon-fill logo-secondary" stroke-width="1.5" />
+        <!-- Person body -->
+        <path d="M3 25c0-6 4-10 9-10s9 4 9 10" class="logo-icon-fill logo-secondary" stroke-width="1.5" />
+    </g>
+
+    <!-- Calendar icon (overlapping right) -->
+    <g transform="translate(49, 38)">
+        <!-- Calendar base -->
+        <rect x="0" y="5" width="24" height="20" rx="3" class="logo-icon-fill logo-secondary" stroke-width="1.5" />
+        <!-- Calendar header -->
+        <rect x="0" y="5" width="24" height="6" rx="3" class="logo-header-fill" />
+        <!-- Calendar rings -->
+        <circle cx="6" cy="3" r="1.5" fill="none" class="logo-secondary" stroke-width="1.5" />
+        <circle cx="18" cy="3" r="1.5" fill="none" class="logo-secondary" stroke-width="1.5" />
+        <!-- Calendar grid -->
+        <line x1="4" y1="14" x2="20" y2="14" class="logo-secondary" stroke-width="1" />
+        <line x1="4" y1="18" x2="20" y2="18" class="logo-secondary" stroke-width="1" />
+        <line x1="8" y1="11" x2="8" y2="23" class="logo-secondary" stroke-width="1" />
+        <line x1="16" y1="11" x2="16" y2="23" class="logo-secondary" stroke-width="1" />
+    </g>
+</svg>
